@@ -57,8 +57,6 @@
         <property name="LastConnectedTime" type="s" access="read"/>
     </interface>
 
-    <!-- ==================================== -->
-    <!--              Crap                    -->
     <interface name="net.connman.iwd.AgentManager">
         <method name="RegisterAgent">
             <arg name="path" type="o" direction="in"/>

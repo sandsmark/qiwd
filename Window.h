@@ -45,7 +45,7 @@ private:
     QComboBox *m_deviceList = nullptr;
 
 //    QMap<QDBusObjectPath, QPointer<iwd::SimpleConfiguration>> m_wps;
-    // To support making iwd act as an access point
+    // need this to get signal strength and sorted list of networks and stuff
 //    QMap<QDBusObjectPath, QPointer<iwd::Station>> m_stations;
 };
 
