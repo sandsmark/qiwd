@@ -42,6 +42,8 @@
         <property name="Name" type="s" access="read"/>
         <property name="Connected" type="b" access="read"/>
         <property name="Device" type="o" access="read"/>
+
+        <!-- possible types: "open", "psk", "8021x" (EAP) -->
         <property name="Type" type="s" access="read"/>
         <property name="KnownNetwork" type="o" access="read"/>
     </interface>
@@ -51,6 +53,8 @@
         <method name="Forget">
         </method>
         <property name="Name" type="s" access="read"/>
+
+        <!-- possible types: "open", "psk", "8021x" (EAP), "hotspot" -->
         <property name="Type" type="s" access="read"/>
         <property name="Hidden" type="b" access="read"/>
         <property name="AutoConnect" type="b" access="readwrite"/>

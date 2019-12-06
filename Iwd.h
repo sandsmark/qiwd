@@ -95,6 +95,7 @@ public slots:
         deleteLater();
     }
 
+private:
     Iwd *m_iwd;
 };
 
@@ -177,6 +178,7 @@ public slots:
         qDebug() << "auth request was cancelled" << reason;
     }
 
+private:
     Iwd *m_iwd;
 };
 
