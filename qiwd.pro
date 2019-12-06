@@ -3,8 +3,8 @@ TARGET = qiwd
 
 QT += dbus widgets
 
-HEADERS += Iwd.h \
+HEADERS += DbusInterface.h \
     ManagedObject.h \
     Window.h
-SOURCES += Iwd.cpp main.cpp \
+SOURCES += DbusInterface.cpp main.cpp \
     Window.cpp

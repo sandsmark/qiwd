@@ -4,7 +4,7 @@
 #include <QWidget>
 #include <QPointer>
 
-#include "Iwd.h"
+#include "DbusInterface.h"
 // Let's not get too carried away
 using namespace net::connman;
 
