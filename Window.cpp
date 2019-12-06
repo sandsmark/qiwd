@@ -102,45 +102,55 @@ void Window::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QS
     updateUi();
 }
 
-void Window::onManagedObjectAdded(const QDBusObjectPath &object, const ManagedObject &interface)
+void Window::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedObject &object)
 {
-    if (object.path() == "/") {
+    if (objectPath.path() == "/") {
         return;
     }
 
     // We only support one interface type per object, FIXME if iwd ever changes
-    for (const QString &interfaceName : interface.keys()) {
-        if (interfaceName == "org.freedesktop.DBus.Properties") {
+    for (const QString &interfaceName : object.keys()) {
+        if (interfaceName == "org.freedesktop.DBus.Properties") { // generic that everything has
             continue;
         }
 
         if (interfaceName == iwd::Adapter::staticInterfaceName()) {
-            setProperties(addAdapter(object), interface[interfaceName]);
-            return;
+            setProperties(addAdapter(objectPath), object[interfaceName]);
+            continue;
         }
 
         if (interfaceName == iwd::Device::staticInterfaceName()) {
-            setProperties(addDevice(object), interface[interfaceName]);
-            return;
+            setProperties(addDevice(objectPath), object[interfaceName]);
+            continue;
         }
 
         if (interfaceName == iwd::KnownNetwork::staticInterfaceName()) {
-            setProperties(addKnownNetwork(object), interface[interfaceName]);
-            return;
+            setProperties(addKnownNetwork(objectPath), object[interfaceName]);
+            continue;
         }
 
         if (interfaceName == iwd::Network::staticInterfaceName()) {
-            setProperties(addNetwork(object), interface[interfaceName]);
-            return;
+            setProperties(addNetwork(objectPath), object[interfaceName]);
+            continue;
         }
-        if (interfaceName == iwd::AgentManager::staticInterfaceName()) {
-            setProperties(addAgentManager(object), interface[interfaceName]);
-            return;
-        }
-    }
 
-    qDebug() << object.path();
-    qWarning() << "Unknown object" << interface.keys() << object.path();
+        if (interfaceName == iwd::AgentManager::staticInterfaceName()) {
+            setProperties(addAgentManager(objectPath), object[interfaceName]);
+            continue;
+        }
+
+        if (interfaceName == iwd::Station::staticInterfaceName()) {
+            setProperties(addStation(objectPath), object[interfaceName]);
+            continue;
+        }
+
+        if (interfaceName == iwd::SimpleConfiguration::staticInterfaceName()) {
+            setProperties(addWps(objectPath), object[interfaceName]);
+            continue;
+        }
+
+        qWarning() << "Unhandled interface" << interfaceName << object.keys() << objectPath.path();
+    }
 }
 
 void Window::updateUi()
@@ -217,6 +227,28 @@ QObject *Window::addAgentManager(const QDBusObjectPath &object)
 
     m_agentManagers[object] = new iwd::AgentManager(m_iwd->service(), object.path(), m_iwd->connection(), this);
     return m_agentManagers[object];
+}
+
+QObject *Window::addStation(const QDBusObjectPath &object)
+{
+    if (m_stations.contains(object)) {
+        qWarning() << "Duplicate station object!" << object.path();
+        m_stations[object]->deleteLater();
+    }
+
+    m_stations[object] = new iwd::Station(m_iwd->service(), object.path(), m_iwd->connection(), this);
+    return m_stations[object];
+}
+
+QObject *Window::addWps(const QDBusObjectPath &object)
+{
+    if (m_wps.contains(object)) {
+        qWarning() << "Duplicate WPS object!" << object.path();
+        m_wps[object]->deleteLater();
+    }
+
+    m_wps[object] = new iwd::SimpleConfiguration(m_iwd->service(), object.path(), m_iwd->connection(), this);
+    return m_wps[object];
 }
 
 void Window::setProperties(QObject *object, const QVariantMap &properties)
