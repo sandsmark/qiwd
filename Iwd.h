@@ -15,8 +15,16 @@ public:
 
     bool init();
 
+    QString networkName(const QString &id) {
+        QDBusObjectPath path(id);
+        if (!m_networks.contains(path)) {
+            return QString();
+        }
+        return m_networks[path]->name();
+    }
+
 signals:
-    void knownNetworkAdded(const QString &name);
+    void knownNetworkAdded(const QString &name, const QString &id);
     void visibleNetworkAdded(const QString &name);
     void deviceAdded(const QString &name);
 

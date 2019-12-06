@@ -26,7 +26,8 @@ Window::Window(QWidget *parent) : QWidget(parent)
         }
     });
 
-    connect(&m_iwd, &Iwd::knownNetworkAdded, this, [=](const QString &name){
+    connect(&m_iwd, &Iwd::knownNetworkAdded, this, [=](const QString &name, const QString &id){
+        Q_UNUSED(id);
         m_knownNetworksList->addItem(name);
     });
     connect(&m_iwd, &Iwd::knownNetworkRemoved, this, [=](const QString &name){
