@@ -1,5 +1,8 @@
 #include <QApplication>
+#include <QDBusMetaType>
+
 #include "Window.h"
+#include "ManagedObject.h"
 
 int main(int argc, char *argv[])
 {
