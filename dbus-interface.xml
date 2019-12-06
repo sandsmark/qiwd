@@ -3,12 +3,12 @@
     <interface name="org.freedesktop.DBus.ObjectManager">
         <method name="GetManagedObjects">
             <arg name="objpath_interfaces_and_properties" type="a{oa{sa{sv}}}" direction="out"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantList"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="ManagedObjectList"/>
         </method>
         <signal name="InterfacesAdded">
             <arg name="object_path" type="o"/>
             <arg name="interfaces_and_properties" type="a{sa{sv}}"/>
-            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantList"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="ManagedObject"/>
         </signal>
         <signal name="InterfacesRemoved">
             <arg name="object_path" type="o"/>
@@ -85,5 +85,14 @@
         <property name="Device" type="o" access="read"/>
         <property name="Type" type="s" access="read"/>
         <property name="KnownNetwork" type="o" access="read"/>
+    </interface>
+    <interface name="net.connman.iwd.KnownNetwork">
+        <method name="Forget">
+        </method>
+        <property name="Name" type="s" access="read"/>
+        <property name="Type" type="s" access="read"/>
+        <property name="Hidden" type="b" access="read"/>
+        <property name="AutoConnect" type="b" access="readwrite"/>
+        <property name="LastConnectedTime" type="s" access="read"/>
     </interface>
 </node>
