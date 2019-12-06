@@ -1,16 +1,33 @@
 #include "Window.h"
 
 #include <QDBusConnection>
+#include <QVBoxLayout>
+#include <QComboBox>
+#include <QListWidget>
 
 Window::Window(QWidget *parent) : QWidget(parent)
 {
+    setLayout(new QVBoxLayout);
+    m_deviceList = new QComboBox;
+    m_networkList = new QListWidget;
+    m_knownNetworksList = new QListWidget;
+
+    layout()->addWidget(m_deviceList);
+    layout()->addWidget(m_networkList);
+    layout()->addWidget(m_knownNetworksList);
+
     m_iwd = new org::freedesktop::DBus::ObjectManager("net.connman.iwd", "/", QDBusConnection::systemBus(), this);
     if (!m_iwd->isValid()) {
         qWarning() << "Failed to connect to iwd";
         return;
     }
 
-    connect(m_iwd, &org::freedesktop::DBus::ObjectManager::InterfacesAdded, this, &Window::handleInterface);
+//    connect(m_iwd, &org::freedesktop::DBus::ObjectManager::InterfacesAdded, this, &Window::onManagedObjectAdded);
+    connect(m_iwd, &org::freedesktop::DBus::ObjectManager::InterfacesAdded, this, [=](const QDBusObjectPath &object, const ManagedObject &interface){
+        // just a hack until we do updating the ui properly
+        onManagedObjectAdded(object, interface);
+        updateUi();
+    });
     connect(m_iwd, &org::freedesktop::DBus::ObjectManager::InterfacesRemoved, this, &Window::onManagedObjectRemoved);
 
     QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(m_iwd->GetManagedObjects(), this);
@@ -26,8 +43,10 @@ void Window::onManagedObjectsReceived(QDBusPendingCallWatcher *watcher)
     QMapIterator<QDBusObjectPath,ManagedObject> it(reply.value());
     while (it.hasNext()) {
         it.next();
-        handleInterface(it.key(), it.value());
+        onManagedObjectAdded(it.key(), it.value());
     }
+
+    updateUi();
 }
 
 void Window::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStringList &interfaces)
@@ -78,48 +97,68 @@ void Window::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QS
             m_agentManagers.take(object_path)->deleteLater();
             continue;
         }
-
     }
+
+    updateUi();
 }
 
-void Window::handleInterface(const QDBusObjectPath &object, const ManagedObject &interface)
+void Window::onManagedObjectAdded(const QDBusObjectPath &object, const ManagedObject &interface)
 {
     if (object.path() == "/") {
         return;
     }
+
+    // We only support one interface type per object, FIXME if iwd ever changes
     for (const QString &interfaceName : interface.keys()) {
         if (interfaceName == "org.freedesktop.DBus.Properties") {
             continue;
         }
 
         if (interfaceName == iwd::Adapter::staticInterfaceName()) {
-            setInitialProperties(addAdapter(object), interface[interfaceName]);
+            setProperties(addAdapter(object), interface[interfaceName]);
             return;
         }
 
         if (interfaceName == iwd::Device::staticInterfaceName()) {
-            setInitialProperties(addDevice(object), interface[interfaceName]);
+            setProperties(addDevice(object), interface[interfaceName]);
             return;
         }
 
         if (interfaceName == iwd::KnownNetwork::staticInterfaceName()) {
-            setInitialProperties(addKnownNetwork(object), interface[interfaceName]);
+            setProperties(addKnownNetwork(object), interface[interfaceName]);
             return;
         }
 
         if (interfaceName == iwd::Network::staticInterfaceName()) {
-            setInitialProperties(addNetwork(object), interface[interfaceName]);
+            setProperties(addNetwork(object), interface[interfaceName]);
             return;
         }
         if (interfaceName == iwd::AgentManager::staticInterfaceName()) {
-            setInitialProperties(addAgentManager(object), interface[interfaceName]);
+            setProperties(addAgentManager(object), interface[interfaceName]);
             return;
         }
     }
 
-    qDebug() << "================";
     qDebug() << object.path();
-    qWarning() << "Unknown object" << interface.keys();
+    qWarning() << "Unknown object" << interface.keys() << object.path();
+}
+
+void Window::updateUi()
+{
+    m_deviceList->clear();
+    for (const QPointer<iwd::Device> device : m_devices.values()) {
+        m_deviceList->addItem(device->name());
+    }
+
+    m_networkList->clear();
+    for (const QPointer<iwd::Network> network : m_networks.values()) {
+        m_networkList->addItem(network->name());
+    }
+
+    m_knownNetworksList->clear();
+    for (const QPointer<iwd::KnownNetwork> network : m_knownNetworks.values()) {
+        m_knownNetworksList->addItem(network->name());
+    }
 }
 
 QObject *Window::addAdapter(const QDBusObjectPath &object)
@@ -130,6 +169,7 @@ QObject *Window::addAdapter(const QDBusObjectPath &object)
     }
 
     m_adapters[object] = new iwd::Adapter(m_iwd->service(), object.path(), m_iwd->connection(), this);
+    qDebug() << "Added adapter" << m_adapters[object]->name();
     return m_adapters[object];
 }
 
@@ -141,6 +181,7 @@ QObject *Window::addDevice(const QDBusObjectPath &object)
     }
 
     m_devices[object] = new iwd::Device(m_iwd->service(), object.path(), m_iwd->connection(), this);
+    qDebug() << "Added device" << m_devices[object]->name();
     return m_devices[object];
 }
 
@@ -178,7 +219,7 @@ QObject *Window::addAgentManager(const QDBusObjectPath &object)
     return m_agentManagers[object];
 }
 
-void Window::setInitialProperties(QObject *object, const QVariantMap &properties)
+void Window::setProperties(QObject *object, const QVariantMap &properties)
 {
     QMapIterator<QString, QVariant> it(properties);
     while (it.hasNext()) {
