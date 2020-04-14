@@ -220,16 +220,16 @@ SignalLevelAgent::SignalLevelAgent(Iwd *parent) :
     QDBusAbstractAdaptor(parent)
 {
     // Need a unique ID, best I could come up with
-    m_path.setPath("/qiwd/signalagent/" + QString::number(std::uintptr_t(this)));
+    m_path.setPath("/qiwd/signalagent/" + QString::number(std::uintptr_t(this)) + QString::number(QCoreApplication::applicationPid()));
 
-    qDebug() << "Signal agent path" << m_path;
+    qDebug() << "Signal agent path" << m_path.path();
 }
 
 AuthAgent::AuthAgent(Iwd *parent) : QDBusAbstractAdaptor(parent),
     m_iwd(parent)
 {
     // Need a unique ID, best I could come up with
-    m_path.setPath("/qiwd/authagent/" + QString::number(std::uintptr_t(this)));
+    m_path.setPath("/qiwd/authagent/" + QString::number(std::uintptr_t(this)) + QString::number(QCoreApplication::applicationPid()));
 
-    qDebug() << "Auth Agent path" << m_path;
+    qDebug() << "Auth Agent path" << m_path << m_path.path();
 }
