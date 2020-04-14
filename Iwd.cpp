@@ -20,6 +20,25 @@ bool Iwd::init()
     return true;
 }
 
+void Iwd::setAuthAgent(const QDBusObjectPath &agentPath)
+{
+    for (const QPointer<iwd::AgentManager> &manager : m_agentManagers) {
+        qDebug() << "Registering auth agent" << agentPath << "for" << manager->path();
+        manager->RegisterAgent(agentPath);
+    }
+    m_authAgent = agentPath;
+}
+
+void Iwd::setSignalAgent(const QDBusObjectPath &agentPath, const LevelsList &interestingLevels)
+{
+    for (const QPointer<iwd::Station> &station : m_stations) {
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(station->RegisterSignalLevelAgent(agentPath, interestingLevels));
+        connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onPendingCallComplete);
+    }
+    m_signalAgent = agentPath;
+    m_interestingSignalLevels = interestingLevels;
+}
+
 void Iwd::onManagedObjectsReceived(QDBusPendingCallWatcher *watcher)
 {
     QDBusPendingReply<ManagedObjectList> reply = *watcher;
@@ -90,6 +109,24 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
             m_agentManagers.take(object_path)->deleteLater();
             continue;
         }
+
+        if (interfaceName == iwd::Station::staticInterfaceName()) {
+            if (!m_stations.contains(object_path)) {
+                qWarning() << "No known stations with path" << object_path.path() << "registered";
+                continue;
+            }
+            m_stations.take(object_path)->deleteLater();
+            continue;
+        }
+
+        if (interfaceName == iwd::SimpleConfiguration::staticInterfaceName()) {
+            if (!m_wps.contains(object_path)) {
+                qWarning() << "No known simple configuration with path" << object_path.path() << "registered";
+                continue;
+            }
+            m_wps.take(object_path)->deleteLater();
+            continue;
+        }
     }
 }
 
@@ -135,7 +172,11 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         }
 
         if (interfaceName == iwd::Station::staticInterfaceName()) {
-            addObject<iwd::Station>(objectPath, m_stations, props);
+            QPointer<iwd::Station> station = addObject<iwd::Station>(objectPath, m_stations, props);
+            if (!m_signalAgent.path().isEmpty()) {
+                QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(station->RegisterSignalLevelAgent(m_signalAgent, m_interestingSignalLevels));
+                connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onPendingCallComplete);
+            }
             continue;
         }
 
@@ -146,6 +187,14 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
 
         qWarning() << "Unhandled interface" << interfaceName << object.keys() << objectPath.path();
     }
+}
+
+void Iwd::onPendingCallComplete(QDBusPendingCallWatcher *call)
+{
+    QDBusPendingReply<> reply = *call;
+    qDebug() << "pending call complete" << call->error() << reply.isError() << reply.error();
+
+    call->deleteLater();
 }
 
 void Iwd::setProperties(QObject *object, const QVariantMap &properties)
@@ -160,4 +209,22 @@ void Iwd::setProperties(QObject *object, const QVariantMap &properties)
         }
         object->setProperty(propertyName, it.value());
     }
+}
+
+SignalLevelAgent::SignalLevelAgent(Iwd *parent) :
+    QDBusAbstractAdaptor(parent)
+{
+    // Need a unique ID, best I could come up with
+    m_path.setPath("/qiwd/signalagent/" + QString::number(std::uintptr_t(this)));
+
+    qDebug() << "Signal agent path" << m_path;
+}
+
+AuthAgent::AuthAgent(Iwd *parent) : QDBusAbstractAdaptor(parent),
+    m_iwd(parent)
+{
+    // Need a unique ID, best I could come up with
+    m_path.setPath("/qiwd/authagent/" + QString::number(std::uintptr_t(this)));
+
+    qDebug() << "Auth Agent path" << m_path;
 }

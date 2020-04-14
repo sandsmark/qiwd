@@ -8,6 +8,8 @@
 
 class QListWidget;
 class QComboBox;
+class AuthUi;
+class SignalLevelAgent;
 
 class Window : public QWidget
 {
@@ -21,6 +23,7 @@ private:
     QComboBox *m_deviceList = nullptr;
 
     Iwd m_iwd;
+    QPointer<SignalLevelAgent> m_signalAgent;
 };
 
 #endif // WINDOW_H

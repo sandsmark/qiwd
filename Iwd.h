@@ -2,12 +2,14 @@
 #define IWD_H
 
 #include <QObject>
+#include <QDBusPendingCall>
 
 #include "DbusInterface.h"
 // Let's not get too carried away
 using namespace net::connman;
 
 class SignalLevelAgent;
+class AuthAgent;
 
 class Iwd : public QObject
 {
@@ -25,6 +27,10 @@ public:
         return m_networks[path]->name();
     }
 
+    void setAuthAgent(const QDBusObjectPath &agentPath);
+
+    void setSignalAgent(const QDBusObjectPath &agentPath, const LevelsList &interestingLevels);
+
 signals:
     void knownNetworkAdded(const QString &name, const QString &id);
     void visibleNetworkAdded(const QString &name);
@@ -34,22 +40,17 @@ signals:
     void visibleNetworkRemoved(const QString &name);
     void deviceRemoved(const QString &name);
 
-    void signalLevelChanged(const QString &networkName, int level);
+    void signalLevelChanged(const QString &station, int level);
 
 private slots:
     void onManagedObjectsReceived(QDBusPendingCallWatcher *watcher);
     void onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStringList &interfaces);
     void onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedObject &object);
 
-private:
-    friend class SignalLevelAgent;
-    void onSignalLevelChanged(const QDBusObjectPath &object, uint8_t signalLevel) {
-        if (!m_networks.contains(object)) {
-            return;
-        }
-        emit signalLevelChanged(m_networks[object]->name(), signalLevel);
-    }
+    void onPendingCallComplete(QDBusPendingCallWatcher *call);
 
+
+private:
     template<class T>
     T* addObject(const QDBusObjectPath &path, QMap<QDBusObjectPath, QPointer<T>> &map, const QVariantMap &props) {
         if (map.contains(path)) {
@@ -75,6 +76,10 @@ private:
     QMap<QDBusObjectPath, QPointer<iwd::KnownNetwork>> m_knownNetworks;
     QMap<QDBusObjectPath, QPointer<iwd::Station>> m_stations;
     QMap<QDBusObjectPath, QPointer<iwd::SimpleConfiguration>> m_wps;
+
+    QDBusObjectPath m_authAgent;
+    QDBusObjectPath m_signalAgent;
+    LevelsList m_interestingSignalLevels;
 };
 
 class SignalLevelAgent : public QDBusAbstractAdaptor
@@ -84,10 +89,15 @@ class SignalLevelAgent : public QDBusAbstractAdaptor
 
 public:
     SignalLevelAgent(Iwd *parent);
+    QDBusObjectPath objectPath() const { return m_path; }
+
+signals:
+    void signalLevelChanged(const QString &stationId, int newLevel);
 
 public slots:
-    QDBusVariant Changed(const QDBusObjectPath &object, uint8_t level) {
-        m_iwd->onSignalLevelChanged(object, level);
+    QDBusVariant Changed(const QDBusObjectPath &object, uchar level) {
+        qDebug() << "Signal changed" << level;
+        emit signalLevelChanged(object.path(), level);
         return QDBusVariant("");
     }
     Q_NOREPLY void Release(const QDBusObjectPath &object) {
@@ -97,6 +107,7 @@ public slots:
 
 private:
     Iwd *m_iwd;
+    QDBusObjectPath  m_path;
 };
 
 class AuthAgent : public QDBusAbstractAdaptor
@@ -107,6 +118,18 @@ class AuthAgent : public QDBusAbstractAdaptor
 public:
     AuthAgent(Iwd *parent);
 
+    QDBusObjectPath objectPath() const { return m_path; }
+
+protected:
+    virtual QString onRequestPrivateKeyPassphrase(const QString &networkId) = 0;
+    virtual QString onRequestPassphrase(const QString &networkId) = 0;
+    virtual QPair<QString, QString> onRequestUsernameAndPassword(const QString &networkId) = 0;
+    virtual QString onRequestUserPassword(const QString &username, const QString &networkId) = 0;
+
+signals:
+    void authenticationCancelled(const QString &reason);
+    void released(const QString &networkId);
+
 public slots:
     /**
      * This method gets called when the service daemon
@@ -116,8 +139,7 @@ public slots:
      * already been unregistered.
      */
     Q_NOREPLY void Release(const QDBusObjectPath &object) {
-        qDebug() << "deleting auth agent" << object.path();
-        deleteLater();
+        emit released(object.path());
     }
 
     /**
@@ -127,7 +149,7 @@ public slots:
      * Possible Errors: net.connman.iwd.Agent.Error.Canceled
      */
     QDBusVariant RequestPassphrase(const QDBusObjectPath &network) {
-        return QDBusVariant("TODO");
+        return QDBusVariant(onRequestPassphrase(network.path()));
     }
 
     /**
@@ -141,7 +163,7 @@ public slots:
      * @return a string
      */
     QDBusVariant RequestPrivateKeyPassphrase(const QDBusObjectPath &network) {
-        return QDBusVariant("TODO");
+        return QDBusVariant(onRequestPrivateKeyPassphrase(network.path()));
     }
 
     /**
@@ -154,7 +176,8 @@ public slots:
      * @return two strings
      */
     QDBusVariant RequestUserNameAndPassword(const QDBusObjectPath &network) {
-        return QDBusVariant(QStringList({"TODO", "TODO"}));
+        const QPair<QString, QString> usernameAndPassword = onRequestUsernameAndPassword(network.path());
+        return QDBusVariant(QStringList({usernameAndPassword.first, usernameAndPassword.second}));
     }
 
     /**
@@ -164,7 +187,7 @@ public slots:
      * in the parameter.
      */
     QDBusVariant RequestUserPassword(const QDBusObjectPath &network, const QString &username) {
-        return QDBusVariant("TODO");
+        return QDBusVariant(onRequestUserPassword(username, network.path()));
     }
 
     /**
@@ -175,11 +198,14 @@ public slots:
      * "timed-out" or "shutdown".
      */
     Q_NOREPLY void Cancel(const QString &reason) {
-        qDebug() << "auth request was cancelled" << reason;
+        emit authenticationCancelled(reason);
     }
 
-private:
+protected:
     Iwd *m_iwd;
+
+private:
+    QDBusObjectPath m_path;
 };
 
 
