@@ -195,8 +195,9 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
 
 void Iwd::onPendingCallComplete(QDBusPendingCallWatcher *call)
 {
-    QDBusPendingReply<> reply = *call;
-    qDebug() << "pending call complete" << call->error() << reply.isError() << reply.error();
+    if (call->isError() || call->error().type() != QDBusError::NoError) {
+        qWarning() << "pending call failed" << call->error() << call->isError();
+    }
 
     call->deleteLater();
 }
