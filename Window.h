@@ -23,6 +23,7 @@ private:
     QComboBox *m_deviceList = nullptr;
 
     Iwd m_iwd;
+    QPointer<AuthUi> m_authUi;
     QPointer<SignalLevelAgent> m_signalAgent;
 };
 

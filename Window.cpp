@@ -1,5 +1,7 @@
 #include "Window.h"
 
+#include "AuthUi.h"
+
 #include <QDBusConnection>
 #include <QVBoxLayout>
 #include <QComboBox>
@@ -56,6 +58,13 @@ Window::Window(QWidget *parent) : QWidget(parent)
     connect(m_signalAgent, &SignalLevelAgent::signalLevelChanged, this, [=](const QString &stationId, int newLevel) {
         qDebug() << "Signal level for" << stationId << "is now" << newLevel;
     });
+
+    m_authUi = new AuthUi(&m_iwd);
+    if (QDBusConnection::systemBus().registerObject(m_authUi->objectPath().path(), this)) {
+        m_iwd.setAuthAgent(m_authUi->objectPath());
+    } else {
+        qWarning() << "Failed to register auth agent";
+    }
 
     m_iwd.init();
 }

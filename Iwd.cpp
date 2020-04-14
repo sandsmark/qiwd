@@ -167,7 +167,11 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         }
 
         if (interfaceName == iwd::AgentManager::staticInterfaceName()) {
-            addObject<iwd::AgentManager>(objectPath, m_agentManagers, props);
+            iwd::AgentManager *manager = addObject<iwd::AgentManager>(objectPath, m_agentManagers, props);
+            if (!m_authAgent.path().isEmpty()) {
+                QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(manager->RegisterAgent(m_authAgent));
+                connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onPendingCallComplete);
+            }
             continue;
         }
 
