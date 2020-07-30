@@ -17,6 +17,17 @@ class Window : public QWidget
 public:
     explicit Window(QWidget *parent = nullptr);
 
+private slots:
+    void onKnownNetworkRemoved(const QString &networkId);
+    void onKnownNetworkAdded(const QString &networkId, const QString &name);
+
+    void onDeviceAdded(const QString &stationId, const QString &name);
+    void onDeviceRemoved(const QString &stationId);
+    void onDisconnectDevice();
+
+    void onVisibleNetworkRemoved(const QString &name);
+    void onVisibleNetworkAdded(const QString &name);
+
 private:
     QListWidget *m_knownNetworksList = nullptr;
     QListWidget *m_networkList = nullptr;

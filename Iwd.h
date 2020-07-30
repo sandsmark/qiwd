@@ -31,10 +31,13 @@ public:
 
     void setSignalAgent(const QDBusObjectPath &agentPath, const LevelsList &interestingLevels);
 
+public slots:
+    void disconnectStation(const QString &stationId);
+
 signals:
     void knownNetworkAdded(const QString &name, const QString &id);
     void visibleNetworkAdded(const QString &name);
-    void deviceAdded(const QString &name);
+    void deviceAdded(const QString &stationId, const QString &name);
 
     void knownNetworkRemoved(const QString &name);
     void visibleNetworkRemoved(const QString &name);
@@ -49,8 +52,26 @@ private slots:
 
     void onPendingCallComplete(QDBusPendingCallWatcher *call);
 
+//    void onPropertiesChanged();
+    void onPropertiesChanged(const QMap<QString,QVariant>& changedProperties,
+                            const QStringList& invalidatedProperties);
 
 private:
+    void watchProperties(QDBusAbstractInterface *intf) {
+        const QString DBUS_INTERFACE_PROPERTIES = "org.freedesktop.DBus.Properties";
+        qDebug() << intf->service() << intf->path() << intf->interface();
+        QDBusConnection::systemBus().connect(intf->service(),
+                                             intf->path(),
+                                             DBUS_INTERFACE_PROPERTIES,
+                                             "PropertiesChanged",
+                                             QStringList() << intf->interface(),
+                                            QString(),
+                                             intf,
+                                             SIGNAL(onPropertiesChanged(QString, QVariantMap, QStringList))
+//                                             this,
+//                                             SLOT(onPropertiesChanged(QString, QVariantMap, QStringList))
+                                             );
+    }
     template<class T>
     T* addObject(const QDBusObjectPath &path, QMap<QDBusObjectPath, QPointer<T>> &map, const QVariantMap &props) {
         if (map.contains(path)) {

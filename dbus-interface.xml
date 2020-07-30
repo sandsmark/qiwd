@@ -50,8 +50,7 @@
 
     <!-- Stored network -->
     <interface name="net.connman.iwd.KnownNetwork">
-        <method name="Forget">
-        </method>
+        <method name="Forget" />
         <property name="Name" type="s" access="read"/>
 
         <!-- possible types: "open", "psk", "8021x" (EAP), "hotspot" -->
@@ -116,5 +115,28 @@
             <arg name="path" type="o" direction="in"/>
             <arg name="signal" type="y" direction="in"/>
         </method>
+    </interface>
+    <interface name="org.freedesktop.DBus.Properties">
+        <method name="Get">
+            <arg type="s" name="interface_name" direction="in"/>
+            <arg type="s" name="property_name" direction="in"/>
+            <arg type="v" name="value" direction="out"/>
+        </method>
+        <method name="GetAll">
+            <arg type="s" name="interface_name" direction="in"/>
+            <arg type="a{sv}" name="properties" direction="out"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+        </method>
+        <method name="Set">
+            <arg type="s" name="interface_name" direction="in"/>
+            <arg type="s" name="property_name" direction="in"/>
+            <arg type="v" name="value" direction="in"/>
+        </method>
+        <signal name="PropertiesChanged">
+            <arg type="s" name="interface_name"/>
+            <arg type="a{sv}" name="changed_properties"/>
+            <arg type="as" name="invalidated_properties"/>
+            <annotation name="org.qtproject.QtDBus.QtTypeName.Out1" value="QVariantMap"/>
+        </signal>
     </interface>
 </node>

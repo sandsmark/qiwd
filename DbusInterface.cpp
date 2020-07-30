@@ -16,7 +16,7 @@
  */
 
 NetConnmanIwdAdapterInterface::NetConnmanIwdAdapterInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+    : DBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
 {
 }
 
@@ -29,7 +29,7 @@ NetConnmanIwdAdapterInterface::~NetConnmanIwdAdapterInterface()
  */
 
 NetConnmanIwdAgentManagerInterface::NetConnmanIwdAgentManagerInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+    : DBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
 {
 }
 
@@ -42,7 +42,7 @@ NetConnmanIwdAgentManagerInterface::~NetConnmanIwdAgentManagerInterface()
  */
 
 NetConnmanIwdDeviceInterface::NetConnmanIwdDeviceInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+    : DBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
 {
 }
 
@@ -55,7 +55,7 @@ NetConnmanIwdDeviceInterface::~NetConnmanIwdDeviceInterface()
  */
 
 NetConnmanIwdKnownNetworkInterface::NetConnmanIwdKnownNetworkInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+    : DBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
 {
 }
 
@@ -68,7 +68,7 @@ NetConnmanIwdKnownNetworkInterface::~NetConnmanIwdKnownNetworkInterface()
  */
 
 NetConnmanIwdNetworkInterface::NetConnmanIwdNetworkInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+    : DBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
 {
 }
 
@@ -81,7 +81,7 @@ NetConnmanIwdNetworkInterface::~NetConnmanIwdNetworkInterface()
  */
 
 NetConnmanIwdSignalLevelAgentInterface::NetConnmanIwdSignalLevelAgentInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+    : DBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
 {
 }
 
@@ -94,7 +94,7 @@ NetConnmanIwdSignalLevelAgentInterface::~NetConnmanIwdSignalLevelAgentInterface(
  */
 
 NetConnmanIwdSimpleConfigurationInterface::NetConnmanIwdSimpleConfigurationInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+    : DBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
 {
 }
 
@@ -107,7 +107,7 @@ NetConnmanIwdSimpleConfigurationInterface::~NetConnmanIwdSimpleConfigurationInte
  */
 
 NetConnmanIwdStationInterface::NetConnmanIwdStationInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+    : DBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
 {
 }
 
@@ -120,11 +120,24 @@ NetConnmanIwdStationInterface::~NetConnmanIwdStationInterface()
  */
 
 OrgFreedesktopDBusObjectManagerInterface::OrgFreedesktopDBusObjectManagerInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
-    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+    : DBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
 {
 }
 
 OrgFreedesktopDBusObjectManagerInterface::~OrgFreedesktopDBusObjectManagerInterface()
+{
+}
+
+/*
+ * Implementation of interface class OrgFreedesktopDBusPropertiesInterface
+ */
+
+OrgFreedesktopDBusPropertiesInterface::OrgFreedesktopDBusPropertiesInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent)
+    : QDBusAbstractInterface(service, path, staticInterfaceName(), connection, parent)
+{
+}
+
+OrgFreedesktopDBusPropertiesInterface::~OrgFreedesktopDBusPropertiesInterface()
 {
 }
 

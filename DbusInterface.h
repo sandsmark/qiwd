@@ -20,11 +20,12 @@
 #include <QtCore/QVariant>
 #include <QtDBus/QtDBus>
 #include "CustomTypes.h"
+#include "dbusabstractinterface.h"
 
 /*
  * Proxy class for interface net.connman.iwd.Adapter
  */
-class NetConnmanIwdAdapterInterface: public QDBusAbstractInterface
+class NetConnmanIwdAdapterInterface: public DBusAbstractInterface
 {
     Q_OBJECT
 public:
@@ -65,7 +66,7 @@ Q_SIGNALS: // SIGNALS
 /*
  * Proxy class for interface net.connman.iwd.AgentManager
  */
-class NetConnmanIwdAgentManagerInterface: public QDBusAbstractInterface
+class NetConnmanIwdAgentManagerInterface: public DBusAbstractInterface
 {
     Q_OBJECT
 public:
@@ -98,7 +99,7 @@ Q_SIGNALS: // SIGNALS
 /*
  * Proxy class for interface net.connman.iwd.Device
  */
-class NetConnmanIwdDeviceInterface: public QDBusAbstractInterface
+class NetConnmanIwdDeviceInterface: public DBusAbstractInterface
 {
     Q_OBJECT
 public:
@@ -141,7 +142,7 @@ Q_SIGNALS: // SIGNALS
 /*
  * Proxy class for interface net.connman.iwd.KnownNetwork
  */
-class NetConnmanIwdKnownNetworkInterface: public QDBusAbstractInterface
+class NetConnmanIwdKnownNetworkInterface: public DBusAbstractInterface
 {
     Q_OBJECT
 public:
@@ -188,7 +189,7 @@ Q_SIGNALS: // SIGNALS
 /*
  * Proxy class for interface net.connman.iwd.Network
  */
-class NetConnmanIwdNetworkInterface: public QDBusAbstractInterface
+class NetConnmanIwdNetworkInterface: public DBusAbstractInterface
 {
     Q_OBJECT
 public:
@@ -233,7 +234,7 @@ Q_SIGNALS: // SIGNALS
 /*
  * Proxy class for interface net.connman.iwd.SignalLevelAgent
  */
-class NetConnmanIwdSignalLevelAgentInterface: public QDBusAbstractInterface
+class NetConnmanIwdSignalLevelAgentInterface: public DBusAbstractInterface
 {
     Q_OBJECT
 public:
@@ -265,7 +266,7 @@ Q_SIGNALS: // SIGNALS
 /*
  * Proxy class for interface net.connman.iwd.SimpleConfiguration
  */
-class NetConnmanIwdSimpleConfigurationInterface: public QDBusAbstractInterface
+class NetConnmanIwdSimpleConfigurationInterface: public DBusAbstractInterface
 {
     Q_OBJECT
 public:
@@ -309,7 +310,7 @@ Q_SIGNALS: // SIGNALS
 /*
  * Proxy class for interface net.connman.iwd.Station
  */
-class NetConnmanIwdStationInterface: public QDBusAbstractInterface
+class NetConnmanIwdStationInterface: public DBusAbstractInterface
 {
     Q_OBJECT
 public:
@@ -385,7 +386,7 @@ Q_SIGNALS: // SIGNALS
 /*
  * Proxy class for interface org.freedesktop.DBus.ObjectManager
  */
-class OrgFreedesktopDBusObjectManagerInterface: public QDBusAbstractInterface
+class OrgFreedesktopDBusObjectManagerInterface: public DBusAbstractInterface
 {
     Q_OBJECT
 public:
@@ -409,6 +410,47 @@ Q_SIGNALS: // SIGNALS
     void InterfacesRemoved(const QDBusObjectPath &object_path, const QStringList &interfaces);
 };
 
+/*
+ * Proxy class for interface org.freedesktop.DBus.Properties
+ */
+class OrgFreedesktopDBusPropertiesInterface: public QDBusAbstractInterface
+{
+    Q_OBJECT
+public:
+    static inline const char *staticInterfaceName()
+    { return "org.freedesktop.DBus.Properties"; }
+
+public:
+    OrgFreedesktopDBusPropertiesInterface(const QString &service, const QString &path, const QDBusConnection &connection, QObject *parent = nullptr);
+
+    ~OrgFreedesktopDBusPropertiesInterface();
+
+public Q_SLOTS: // METHODS
+    inline QDBusPendingReply<QDBusVariant> Get(const QString &interface_name, const QString &property_name)
+    {
+        QList<QVariant> argumentList;
+        argumentList << QVariant::fromValue(interface_name) << QVariant::fromValue(property_name);
+        return asyncCallWithArgumentList(QStringLiteral("Get"), argumentList);
+    }
+
+    inline QDBusPendingReply<QVariantMap> GetAll(const QString &interface_name)
+    {
+        QList<QVariant> argumentList;
+        argumentList << QVariant::fromValue(interface_name);
+        return asyncCallWithArgumentList(QStringLiteral("GetAll"), argumentList);
+    }
+
+    inline QDBusPendingReply<> Set(const QString &interface_name, const QString &property_name, const QDBusVariant &value)
+    {
+        QList<QVariant> argumentList;
+        argumentList << QVariant::fromValue(interface_name) << QVariant::fromValue(property_name) << QVariant::fromValue(value);
+        return asyncCallWithArgumentList(QStringLiteral("Set"), argumentList);
+    }
+
+Q_SIGNALS: // SIGNALS
+    void PropertiesChanged(const QString &interface_name, const QVariantMap &changed_properties, const QStringList &invalidated_properties);
+};
+
 namespace net {
   namespace connman {
     namespace iwd {
@@ -427,6 +469,7 @@ namespace org {
   namespace freedesktop {
     namespace DBus {
       typedef ::OrgFreedesktopDBusObjectManagerInterface ObjectManager;
+      typedef ::OrgFreedesktopDBusPropertiesInterface Properties;
     }
   }
 }
