@@ -29,13 +29,6 @@
 #include <QtDBus/QDBusMetaType>
 #include <QtCore/QMetaProperty>
 
-//Q_GLOBAL_STATIC_WITH_ARGS(QByteArray, \
-//                          propertiesChangedSignature, \
-//                          (QMetaObject::normalizedSignature(SIGNAL(propertiesChanged(QMap<QString,QVariant>,QStringList)))))
-//Q_GLOBAL_STATIC_WITH_ARGS(QByteArray, \
-//                          propertyChangedSignature, \
-//                          (QMetaObject::normalizedSignature(SIGNAL(propertyChanged(QString,QVariant)))))
-
 QMetaMethod propertiesChangedSignature = QMetaMethod::fromSignal(&DBusAbstractInterface::propertiesChanged);
 QMetaMethod propertyChangedSignature = QMetaMethod::fromSignal(&DBusAbstractInterface::propertyChanged);
 
@@ -59,18 +52,14 @@ void DBusAbstractInterface::connectNotify(const QMetaMethod &signal)
     {
         if ( !m_connected )
         {
-#if QT_VERSION >= 0x040600
             QStringList matchArgs;
             matchArgs << interface();
-#endif
             connection().connect( service(),
                                   path(),
                                   "org.freedesktop.DBus.Properties",
                                   "PropertiesChanged",
-#if QT_VERSION >= 0x040600
                                   matchArgs,
                                   QString(),
-#endif
                                   this,
                                   SLOT(_m_propertiesChanged(QString,QMap<QString,QVariant>,QStringList)) );
             m_connected = true;
@@ -92,18 +81,14 @@ void DBusAbstractInterface::disconnectNotify(const QMetaMethod &signal)
              receivers(propertiesChangedSignature.methodSignature()) == 0 &&
              receivers(propertyChangedSignature.methodSignature()) == 0 )
         {
-#if QT_VERSION >= 0x040600
             QStringList matchArgs;
             matchArgs << interface();
-#endif
             connection().disconnect( service(),
                                      path(),
                                      "org.freedesktop.DBus.Properties",
                                      "PropertiesChanged",
-#if QT_VERSION >= 0x040600
                                      matchArgs,
                                      QString(),
-#endif
                                      this,
                                      SLOT(_m_propertiesChanged(QString,QMap<QString,QVariant>,QStringList)) );
             m_connected = false;
@@ -143,12 +128,13 @@ QVariant DBusAbstractInterface::demarshall( const QByteArray& property,
                 QString errorMessage = "Received invalid property \"%1\" in "
                                        "PropertiesChanged signal: "
                                        "expected %2 (%3), got user type (%4)";
-                errorMessage.arg( QString::fromLatin1(property) )
+                errorMessage = errorMessage
+                            .arg( QString::fromLatin1(property) )
                             .arg( QString::fromLatin1(mp.typeName()) )
                             .arg( QString::fromLatin1(propSig) )
                             .arg( arg.currentSignature() );
                 qDebug() << errorMessage;
-                return qVariantFromValue(QDBusError(
+                return QVariant::fromValue(QDBusError(
                         QDBusError::InvalidSignature, errorMessage
                         ));
             }
@@ -158,10 +144,11 @@ QVariant DBusAbstractInterface::demarshall( const QByteArray& property,
             QString errorMessage = "Received unknown property \"%1\" in "
                                    "PropertiesChanged signal, with D-Bus type "
                                    "%2: cannot convert";
-            errorMessage.arg( QString::fromLatin1(property) )
+            errorMessage = errorMessage
+                        .arg( QString::fromLatin1(property) )
                         .arg( arg.currentSignature() );
             qDebug() << errorMessage;
-            return qVariantFromValue(QDBusError(
+            return QVariant::fromValue(QDBusError(
                     QDBusError::InvalidSignature, errorMessage
                     ));
         }
@@ -179,13 +166,14 @@ QVariant DBusAbstractInterface::demarshall( const QByteArray& property,
         QString errorMessage = "Received invalid property \"%1\" in "
                                "PropertiesChanged signal: "
                                "expected %2 (%3), got %4 (%5)";
-        errorMessage.arg( QString::fromLatin1(property) )
+        errorMessage = errorMessage
+                    .arg( QString::fromLatin1(property) )
                     .arg( QString::fromLatin1(mp.typeName()) )
                     .arg( QString::fromLatin1(propSig) )
                     .arg( QString::fromLatin1(value.typeName()) )
                     .arg( QString::fromLatin1(valueSig) );
         qDebug() << errorMessage;
-        return qVariantFromValue(QDBusError(
+        return QVariant::fromValue(QDBusError(
                 QDBusError::InvalidSignature, errorMessage
                 ));
     }
