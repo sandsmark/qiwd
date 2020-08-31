@@ -157,7 +157,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         const QVariantMap &props = object[interfaceName];
         if (interfaceName == iwd::Adapter::staticInterfaceName()) {
             QPointer<iwd::Adapter> adapter = addObject<iwd::Adapter>(objectPath, m_adapters, props);
-            watchProperties(adapter);
+            //watchProperties(adapter);
             connect(adapter, &iwd::Adapter::propertiesChanged, this, &Iwd::onPropertiesChanged);
             continue;
         }
@@ -171,7 +171,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
                 name = tr("Interface %1").arg(QString::number(m_devices.count() + 1));
             }
             iwd::Device *device = addObject<iwd::Device>(objectPath, m_devices, props);
-            watchProperties(device);
+            //watchProperties(device);
             connect(device, &iwd::Device::propertiesChanged, this, &Iwd::onPropertiesChanged);
             emit deviceAdded(device->path(), name);
             continue;
@@ -180,14 +180,14 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         if (interfaceName == iwd::KnownNetwork::staticInterfaceName()) {
             iwd::KnownNetwork *network = addObject<iwd::KnownNetwork>(objectPath, m_knownNetworks, props);
             connect(network, &iwd::KnownNetwork::propertiesChanged, this, &Iwd::onPropertiesChanged);
-            emit knownNetworkAdded(network->name(), objectPath.path());
-            watchProperties(network);
+            emit knownNetworkAdded(objectPath.path(), network->name());
+            //watchProperties(network);
             continue;
         }
 
         if (interfaceName == iwd::Network::staticInterfaceName()) {
             iwd::Network *network = addObject<iwd::Network>(objectPath, m_networks, props);
-            watchProperties(network);
+            //watchProperties(network);
             connect(network, &iwd::Network::propertiesChanged, this, &Iwd::onPropertiesChanged);
             emit visibleNetworkAdded(network->name());
             continue;
@@ -236,7 +236,7 @@ void Iwd::onPropertiesChanged(const QMap<QString, QVariant> &changedProperties, 
 //void Iwd::onPropertiesChanged()
 {
 //    qDebug() << sender();
-    qDebug() << sender() << changedProperties << invalidatedProperties;
+    qDebug() << "properties changed" << sender() << changedProperties << invalidatedProperties;
 //    if (interface_name == iwd::AgentManager::staticInterfaceName()) {
 //        setProperties(m_in)
 //    }

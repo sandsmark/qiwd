@@ -35,7 +35,7 @@ public slots:
     void disconnectStation(const QString &stationId);
 
 signals:
-    void knownNetworkAdded(const QString &name, const QString &id);
+    void knownNetworkAdded(const QString &id, const QString &name);
     void visibleNetworkAdded(const QString &name);
     void deviceAdded(const QString &stationId, const QString &name);
 
@@ -59,7 +59,7 @@ private slots:
 private:
     void watchProperties(QDBusAbstractInterface *intf) {
         const QString DBUS_INTERFACE_PROPERTIES = "org.freedesktop.DBus.Properties";
-        qDebug() << intf->service() << intf->path() << intf->interface();
+        //qDebug() << intf->service() << intf->path() << intf->interface();
         QDBusConnection::systemBus().connect(intf->service(),
                                              intf->path(),
                                              DBUS_INTERFACE_PROPERTIES,
@@ -82,6 +82,7 @@ private:
         map[path] = object;
 
         setProperties(object, props);
+        watchProperties(object);
 
         return object;
     }

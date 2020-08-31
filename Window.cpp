@@ -24,6 +24,7 @@ void Window::onKnownNetworkRemoved(const QString &networkId)
 
 void Window::onKnownNetworkAdded(const QString &networkId, const QString &name)
 {
+    qDebug() << "known network" << networkId << name;
     Q_UNUSED(networkId);
     m_knownNetworksList->addItem(name);
 }
@@ -90,6 +91,7 @@ Window::Window(QWidget *parent) : QWidget(parent)
     m_signalAgent = new SignalLevelAgent(&m_iwd);
     if (QDBusConnection::systemBus().registerObject(m_signalAgent->objectPath().path(), this)) {
         m_iwd.setSignalAgent(m_signalAgent->objectPath(), {-20, -40, -49, -50, -51, -60, -80});
+        qDebug() << "set signal agent";
     } else {
         qWarning() << "Failed to register signal agent";
     }
