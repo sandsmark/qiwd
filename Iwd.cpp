@@ -158,7 +158,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         if (interfaceName == iwd::Adapter::staticInterfaceName()) {
             QPointer<iwd::Adapter> adapter = addObject<iwd::Adapter>(objectPath, m_adapters, props);
             //watchProperties(adapter);
-            connect(adapter, &iwd::Adapter::propertiesChanged, this, &Iwd::onPropertiesChanged);
+//            connect(adapter, &iwd::Adapter::propertiesChanged, this, &Iwd::onPropertiesChanged);
             continue;
         }
 
@@ -172,14 +172,14 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
             }
             iwd::Device *device = addObject<iwd::Device>(objectPath, m_devices, props);
             //watchProperties(device);
-            connect(device, &iwd::Device::propertiesChanged, this, &Iwd::onPropertiesChanged);
+//            connect(device, &iwd::Device::propertiesChanged, this, &Iwd::onPropertiesChanged);
             emit deviceAdded(device->path(), name);
             continue;
         }
 
         if (interfaceName == iwd::KnownNetwork::staticInterfaceName()) {
             iwd::KnownNetwork *network = addObject<iwd::KnownNetwork>(objectPath, m_knownNetworks, props);
-            connect(network, &iwd::KnownNetwork::propertiesChanged, this, &Iwd::onPropertiesChanged);
+//            connect(network, &iwd::KnownNetwork::propertiesChanged, this, &Iwd::onPropertiesChanged);
             emit knownNetworkAdded(objectPath.path(), network->name());
             //watchProperties(network);
             continue;
@@ -188,7 +188,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         if (interfaceName == iwd::Network::staticInterfaceName()) {
             iwd::Network *network = addObject<iwd::Network>(objectPath, m_networks, props);
             //watchProperties(network);
-            connect(network, &iwd::Network::propertiesChanged, this, &Iwd::onPropertiesChanged);
+//            connect(network, &iwd::Network::propertiesChanged, this, &Iwd::onPropertiesChanged);
             emit visibleNetworkAdded(network->name());
             continue;
         }
@@ -206,7 +206,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
             qDebug() << "Got station" << props;
             qDebug() << objectPath.path();
             QPointer<iwd::Station> station = addObject<iwd::Station>(objectPath, m_stations, props);
-            connect(station, &iwd::Station::propertiesChanged, this, &Iwd::onPropertiesChanged);
+//            connect(station, &iwd::Station::propertiesChanged, this, &Iwd::onPropertiesChanged);
             if (!m_signalAgent.path().isEmpty()) {
                 QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(station->RegisterSignalLevelAgent(m_signalAgent, m_interestingSignalLevels));
                 connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onPendingCallComplete);
@@ -232,11 +232,11 @@ void Iwd::onPendingCallComplete(QDBusPendingCallWatcher *call)
     call->deleteLater();
 }
 
-void Iwd::onPropertiesChanged(const QMap<QString, QVariant> &changedProperties, const QStringList &invalidatedProperties)
+void Iwd::onPropertiesChanged(const QString &interfaceName, const QVariantMap &changedProperties, const QStringList &invalidatedProperties)
 //void Iwd::onPropertiesChanged()
 {
 //    qDebug() << sender();
-    qDebug() << "properties changed" << sender() << changedProperties << invalidatedProperties;
+    qDebug() << "properties changed" << sender() << interfaceName << changedProperties << invalidatedProperties;
 //    if (interface_name == iwd::AgentManager::staticInterfaceName()) {
 //        setProperties(m_in)
 //    }

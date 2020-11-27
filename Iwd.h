@@ -53,24 +53,28 @@ private slots:
     void onPendingCallComplete(QDBusPendingCallWatcher *call);
 
 //    void onPropertiesChanged();
-    void onPropertiesChanged(const QMap<QString,QVariant>& changedProperties,
+    void onPropertiesChanged(const QString &interfaceName, const QVariantMap &changedProperties,
                             const QStringList& invalidatedProperties);
 
 private:
     void watchProperties(QDBusAbstractInterface *intf) {
-        const QString DBUS_INTERFACE_PROPERTIES = "org.freedesktop.DBus.Properties";
-        //qDebug() << intf->service() << intf->path() << intf->interface();
-        QDBusConnection::systemBus().connect(intf->service(),
-                                             intf->path(),
-                                             DBUS_INTERFACE_PROPERTIES,
-                                             "PropertiesChanged",
-                                             QStringList() << intf->interface(),
-                                            QString(),
-                                             intf,
-                                             SIGNAL(onPropertiesChanged(QString, QVariantMap, QStringList))
-//                                             this,
-//                                             SLOT(onPropertiesChanged(QString, QVariantMap, QStringList))
-                                             );
+        org::freedesktop::DBus::Properties *props = new org::freedesktop::DBus::Properties(intf->service(), intf->path(), intf->connection(), intf);
+        connect(props, &org::freedesktop::DBus::Properties::PropertiesChanged, this, &Iwd::onPropertiesChanged);
+//    m_iwd = new org::freedesktop::DBus::ObjectManager("net.connman.iwd", "/", QDBusConnection::systemBus(), this);
+
+//        const QString DBUS_INTERFACE_PROPERTIES = "org.freedesktop.DBus.Properties";
+//        //qDebug() << intf->service() << intf->path() << intf->interface();
+//        QDBusConnection::systemBus().connect(intf->service(),
+//                                             intf->path(),
+//                                             DBUS_INTERFACE_PROPERTIES,
+//                                             "PropertiesChanged",
+//                                             QStringList() << intf->interface(),
+//                                            QString(),
+//                                             intf,
+//                                             SIGNAL(onPropertiesChanged(QString, QVariantMap, QStringList))
+////                                             this,
+////                                             SLOT(onPropertiesChanged(QString, QVariantMap, QStringList))
+//                                             );
     }
     template<class T>
     T* addObject(const QDBusObjectPath &path, QMap<QDBusObjectPath, QPointer<T>> &map, const QVariantMap &props) {
