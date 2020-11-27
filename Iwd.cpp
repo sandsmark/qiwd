@@ -67,6 +67,16 @@ void Iwd::disconnectStation(const QString &stationId)
     m_stations[dbusPath]->Disconnect();
 }
 
+void Iwd::scan()
+{
+    QMapIterator<QDBusObjectPath, QPointer<iwd::Station>> it(m_stations);
+    while (it.hasNext()) {
+        it.next();
+        qDebug() << "Requesting scan for" << it.value()->path();
+        it.value()->Scan();
+    }
+}
+
 void Iwd::onManagedObjectsReceived(QDBusPendingCallWatcher *watcher)
 {
     QDBusPendingReply<ManagedObjectList> reply = *watcher;
@@ -180,8 +190,6 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         const QVariantMap &props = object[interfaceName];
         if (interfaceName == iwd::Adapter::staticInterfaceName()) {
             QPointer<iwd::Adapter> adapter = addObject<iwd::Adapter>(objectPath, m_adapters, props);
-            //watchProperties(adapter);
-//            connect(adapter, &iwd::Adapter::propertiesChanged, this, &Iwd::onPropertiesChanged);
             continue;
         }
 
@@ -250,7 +258,6 @@ void Iwd::onPendingCallComplete(QDBusPendingCallWatcher *call)
     if (call->isError() || call->error().type() != QDBusError::NoError) {
         qWarning() << "pending call failed" << call->error() << call->isError();
     }
-//    qDebug() << call->
 
     call->deleteLater();
 }
@@ -269,15 +276,18 @@ void Iwd::onGetOrderedNetworksReply(QDBusPendingCallWatcher *watcher)
     watcher->deleteLater();
 }
 
-void Iwd::onPropertiesChanged(const QString &interfaceName, const QVariantMap &changedProperties, const QStringList &invalidatedProperties)
-//void Iwd::onPropertiesChanged()
+void Iwd::onPropertiesChanged(QDBusAbstractInterface *intf, const QString &interfaceName, const QVariantMap &changedProperties, const QStringList &invalidatedProperties)
 {
-//    qDebug() << sender();
-    qDebug() << "properties changed" << sender() << interfaceName << changedProperties << invalidatedProperties;
-//    if (interface_name == iwd::AgentManager::staticInterfaceName()) {
-//        setProperties(m_in)
-//    }
+    setProperties(intf, changedProperties);
+    qDebug() << "properties changed" << intf << interfaceName << changedProperties << invalidatedProperties;
 
+    if (interfaceName == iwd::Station::staticInterfaceName()) {
+        if (changedProperties.contains("Scanning")) {
+            emit stationScanningChanged(intf->path(), changedProperties["Scanning"].toBool());
+        }
+    } else {
+        qWarning() << "Unhandled property change";
+    }
 }
 
 void Iwd::setProperties(QObject *object, const QVariantMap &properties)
@@ -292,7 +302,7 @@ void Iwd::setProperties(QObject *object, const QVariantMap &properties)
         it.next();
         const char *propertyName = it.key().toLatin1().constData();
         if (object->metaObject()->indexOfProperty(propertyName) == -1) {
-            qWarning() << "Invalid property name" << it.key();
+            qWarning() << "Invalid property name" << it.key() << "for" << object;
             continue;
         }
         object->setProperty(propertyName, it.value());

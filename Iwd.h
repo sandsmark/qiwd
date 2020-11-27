@@ -40,6 +40,13 @@ public:
 
         return QString();
     }
+    bool isScanning(const QString &device) {
+        QPointer<iwd::Station> station = m_stations.value(QDBusObjectPath(device));
+        if (!station) {
+            return false;
+        }
+        return station->scanning();
+    }
 
     void setAuthAgent(const QDBusObjectPath &agentPath);
 
@@ -48,6 +55,7 @@ public:
 public slots:
     void connectNetwork(const QString &networkId);
     void disconnectStation(const QString &stationId);
+    void scan();
 
 signals:
     void knownNetworkAdded(const QString &id, const QString &name);
@@ -59,6 +67,7 @@ signals:
     void deviceRemoved(const QString &name);
 
     void signalLevelChanged(const QString &station, int level);
+    void stationScanningChanged(const QString &station, bool scanning);
 
 private slots:
     void onManagedObjectsReceived(QDBusPendingCallWatcher *watcher);
@@ -69,28 +78,18 @@ private slots:
     void onGetOrderedNetworksReply(QDBusPendingCallWatcher *watcher);
 
 //    void onPropertiesChanged();
-    void onPropertiesChanged(const QString &interfaceName, const QVariantMap &changedProperties,
+    void onPropertiesChanged(QDBusAbstractInterface *intf, const QString &interfaceName, const QVariantMap &changedProperties,
                             const QStringList& invalidatedProperties);
 
 private:
     void watchProperties(QDBusAbstractInterface *intf) {
         org::freedesktop::DBus::Properties *props = new org::freedesktop::DBus::Properties(intf->service(), intf->path(), intf->connection(), intf);
-        connect(props, &org::freedesktop::DBus::Properties::PropertiesChanged, this, &Iwd::onPropertiesChanged);
-//    m_iwd = new org::freedesktop::DBus::ObjectManager("net.connman.iwd", "/", QDBusConnection::systemBus(), this);
-
-//        const QString DBUS_INTERFACE_PROPERTIES = "org.freedesktop.DBus.Properties";
-//        //qDebug() << intf->service() << intf->path() << intf->interface();
-//        QDBusConnection::systemBus().connect(intf->service(),
-//                                             intf->path(),
-//                                             DBUS_INTERFACE_PROPERTIES,
-//                                             "PropertiesChanged",
-//                                             QStringList() << intf->interface(),
-//                                            QString(),
-//                                             intf,
-//                                             SIGNAL(onPropertiesChanged(QString, QVariantMap, QStringList))
-////                                             this,
-////                                             SLOT(onPropertiesChanged(QString, QVariantMap, QStringList))
-//                                             );
+        connect(props, &org::freedesktop::DBus::Properties::PropertiesChanged, intf, [=](const QString &interfaceName, const QVariantMap &changedProperties, const QStringList& invalidatedProperties) {
+            if (interfaceName != intf->interface()) {
+                return;
+            }
+            onPropertiesChanged(intf, interfaceName, changedProperties, invalidatedProperties);
+        });
     }
     template<class T>
     T* addObject(const QDBusObjectPath &path, QMap<QDBusObjectPath, QPointer<T>> &map, const QVariantMap &props) {

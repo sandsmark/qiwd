@@ -16,6 +16,7 @@ void Window::onKnownNetworkRemoved(const QString &networkId, const QString &name
     // ugly, but don't know a better way
     bool found = false;
     do {
+        found = false;
         for (int i=0; i<m_knownNetworksList->count(); i++) {
             QListWidgetItem *net = m_knownNetworksList->item(i);
             if (net->data(Qt::UserRole).toString() != networkId) {
@@ -85,6 +86,7 @@ void Window::onVisibleNetworkRemoved(const QString &stationId, const QString &na
     // ugly, but don't know a better way
     bool found = false;
     do {
+        found = false;
         for (int i=0; i<m_networkList->count(); i++) {
             QListWidgetItem *net = m_networkList->item(i);
             if (net->data(Qt::UserRole).toString() != stationId) {
@@ -165,8 +167,23 @@ void Window::onSelectionChanged()
     m_connectButton->setEnabled(!m_knownNetworksList->selectedItems().isEmpty() || !m_networkList->selectedItems().isEmpty());
 }
 
+void Window::onDeviceSelectionChanged()
+{
+    m_scanButton->setEnabled(!m_iwd.isScanning(m_deviceList->currentData().toString()));
+}
+
+void Window::onScanningChanged(const QString &station, bool isScanning)
+{
+    if (m_deviceList->currentData().toString() != station) {
+        return;
+    }
+
+    m_scanButton->setEnabled(!isScanning);
+}
+
 Window::Window(QWidget *parent) : QWidget(parent)
 {
+    setWindowFlag(Qt::Dialog);
     QVBoxLayout *mainLayout = new QVBoxLayout;
     setLayout(mainLayout);
     m_networkList = new QListWidget;
@@ -175,11 +192,13 @@ Window::Window(QWidget *parent) : QWidget(parent)
     QHBoxLayout *devicesLayout = new QHBoxLayout;
     m_deviceList = new QComboBox;
     QPushButton *disconnectButton = new QPushButton(tr("Disconnect"));
+    m_scanButton = new QPushButton(tr("Scan"));
     m_connectButton = new QPushButton(tr("Connect"));
     m_connectButton->setEnabled(false);
 
     devicesLayout->addWidget(m_deviceList);
     devicesLayout->addWidget(disconnectButton);
+    devicesLayout->addWidget(m_scanButton);
     devicesLayout->addStretch();
     devicesLayout->addWidget(m_connectButton);
 
@@ -192,8 +211,10 @@ Window::Window(QWidget *parent) : QWidget(parent)
 
     connect(m_networkList, &QListWidget::itemSelectionChanged, this, &Window::onSelectionChanged);
     connect(m_knownNetworksList, &QListWidget::itemSelectionChanged, this, &Window::onSelectionChanged);
+    connect(m_deviceList, &QComboBox::currentTextChanged, this, &Window::onDeviceSelectionChanged);
 
     connect(disconnectButton, &QPushButton::clicked, this, &Window::onDisconnectDevice);
+    connect(m_scanButton, &QPushButton::clicked, &m_iwd, &Iwd::scan);
     connect(m_connectButton, &QPushButton::clicked, this, &Window::onConnectDevice);
 
     connect(&m_iwd, &Iwd::visibleNetworkAdded, this, &Window::onVisibleNetworkAdded);
@@ -203,6 +224,7 @@ Window::Window(QWidget *parent) : QWidget(parent)
     connect(&m_iwd, &Iwd::deviceAdded, this, &Window::onDeviceAdded);
     connect(&m_iwd, &Iwd::deviceRemoved, this, &Window::onDeviceRemoved);
     connect(&m_iwd, &Iwd::signalLevelChanged, this, &Window::onStationSignalChanged);
+    connect(&m_iwd, &Iwd::stationScanningChanged, this, &Window::onScanningChanged);
 
     m_signalAgent = new SignalLevelAgent(&m_iwd);
     if (QDBusConnection::systemBus().registerObject(m_signalAgent->objectPath().path(), this)) {

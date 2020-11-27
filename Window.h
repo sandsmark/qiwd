@@ -42,6 +42,9 @@ private slots:
 
     void onSelectionChanged();
 
+    void onDeviceSelectionChanged();
+    void onScanningChanged(const QString &station, bool isScanning);
+
 private:
     QListWidget *m_knownNetworksList = nullptr;
     QListWidget *m_networkList = nullptr;
@@ -51,6 +54,7 @@ private:
     QPointer<AuthUi> m_authUi;
     QPointer<SignalLevelAgent> m_signalAgent;
     QPushButton *m_connectButton = nullptr;
+    QPushButton *m_scanButton = nullptr;
 };
 
 #endif // WINDOW_H
