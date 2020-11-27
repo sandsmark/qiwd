@@ -27,6 +27,7 @@ void Window::onKnownNetworkRemoved(const QString &networkId, const QString &name
             break;
         }
     } while(found);
+    m_knownNetworksList->sortItems();
 }
 
 void Window::onKnownNetworkAdded(const QString &networkId, const QString &name)
@@ -36,6 +37,7 @@ void Window::onKnownNetworkAdded(const QString &networkId, const QString &name)
     item->setData(Qt::UserRole, networkId);
     item->setData(Qt::UserRole + 1, 100);
     m_knownNetworksList->addItem(item);
+    m_knownNetworksList->sortItems();
 }
 
 void Window::onDeviceAdded(const QString &stationId, const QString &name)
@@ -83,6 +85,7 @@ void Window::onConnectDevice()
 
 void Window::onVisibleNetworkRemoved(const QString &stationId, const QString &name)
 {
+    qDebug() << "Visible network removed" << stationId << name;
     // ugly, but don't know a better way
     bool found = false;
     do {
@@ -97,14 +100,17 @@ void Window::onVisibleNetworkRemoved(const QString &stationId, const QString &na
             break;
         }
     } while(found);
+    m_networkList->sortItems();
 }
 
 void Window::onVisibleNetworkAdded(const QString &stationId, const QString &name)
 {
+    qDebug() << "Visible network added" << stationId << name;
     QListWidgetItem *item = new NetworkItem(QIcon::fromTheme("network-wireless-symbolic"), name);
     item->setData(Qt::UserRole, stationId);
     item->setData(Qt::UserRole + 1, -1000);
     m_networkList->addItem(item);
+    m_networkList->sortItems();
 }
 
 void Window::onStationSignalChanged(const QString &stationId, int newLevel)

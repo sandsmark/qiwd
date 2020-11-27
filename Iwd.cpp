@@ -282,8 +282,22 @@ void Iwd::onPropertiesChanged(QDBusAbstractInterface *intf, const QString &inter
     qDebug() << "properties changed" << intf << interfaceName << changedProperties << invalidatedProperties;
 
     if (interfaceName == iwd::Station::staticInterfaceName()) {
+        iwd::Station *station = qobject_cast<iwd::Station*>(intf);
+        if (!station) {
+            qWarning() << "Not station after all?";
+            return;
+        }
+
         if (changedProperties.contains("Scanning")) {
-            emit stationScanningChanged(intf->path(), changedProperties["Scanning"].toBool());
+            const bool isScanning = changedProperties["Scanning"].toBool();
+
+            if (!isScanning) {
+                // Scanning finished, need to get updated list of signal strengths
+                QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(station->GetOrderedNetworks());
+                connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onGetOrderedNetworksReply);
+            }
+
+            emit stationScanningChanged(intf->path(), isScanning);
         }
     } else {
         qWarning() << "Unhandled property change";
