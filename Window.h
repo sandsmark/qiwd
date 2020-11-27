@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QPointer>
+#include <QListWidgetItem>
 
 #include "Iwd.h"
 
@@ -10,6 +11,13 @@ class QListWidget;
 class QComboBox;
 class AuthUi;
 class SignalLevelAgent;
+
+struct NetworkItem : public QListWidgetItem {
+    using QListWidgetItem::QListWidgetItem;
+    bool operator<(const QListWidgetItem &other) const override {
+        return data(Qt::UserRole + 1).toInt() < other.data(Qt::UserRole + 1).toInt();
+    }
+};
 
 class Window : public QWidget
 {
@@ -25,8 +33,10 @@ private slots:
     void onDeviceRemoved(const QString &stationId);
     void onDisconnectDevice();
 
-    void onVisibleNetworkRemoved(const QString &name);
-    void onVisibleNetworkAdded(const QString &name);
+    void onVisibleNetworkRemoved(const QString &stationId, const QString &name);
+    void onVisibleNetworkAdded(const QString &stationId, const QString &name);
+
+    void onStationSignalChanged(const QString &stationId, int newLevel);
 
 private:
     QListWidget *m_knownNetworksList = nullptr;

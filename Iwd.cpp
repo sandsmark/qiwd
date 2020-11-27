@@ -54,7 +54,6 @@ void Iwd::disconnectStation(const QString &stationId)
 void Iwd::onManagedObjectsReceived(QDBusPendingCallWatcher *watcher)
 {
     QDBusPendingReply<ManagedObjectList> reply = *watcher;
-    watcher->deleteLater();
     if (reply.isError()) {
         qDebug() << reply.error().name() << reply.error().message();
     }
@@ -63,6 +62,14 @@ void Iwd::onManagedObjectsReceived(QDBusPendingCallWatcher *watcher)
         it.next();
         onManagedObjectAdded(it.key(), it.value());
     }
+    QMapIterator<QDBusObjectPath, QPointer<iwd::Station>> netIterator(m_stations);
+    while (netIterator.hasNext()) {
+        netIterator.next();
+        qDebug() << it.value();
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(netIterator.value()->GetOrderedNetworks());
+        connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onGetOrderedNetworksReply);
+    }
+    watcher->deleteLater();
 }
 
 void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStringList &interfaces)
@@ -97,7 +104,7 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
                 continue;
             }
             QPointer<iwd::Network> network = m_networks.take(object_path);
-            emit visibleNetworkRemoved(network->name());
+            emit visibleNetworkRemoved(network->path(), network->name());
             network->deleteLater();
             continue;
         }
@@ -189,7 +196,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
             iwd::Network *network = addObject<iwd::Network>(objectPath, m_networks, props);
             //watchProperties(network);
 //            connect(network, &iwd::Network::propertiesChanged, this, &Iwd::onPropertiesChanged);
-            emit visibleNetworkAdded(network->name());
+            emit visibleNetworkAdded(network->path(), network->name());
             continue;
         }
 
@@ -206,7 +213,6 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
             qDebug() << "Got station" << props;
             qDebug() << objectPath.path();
             QPointer<iwd::Station> station = addObject<iwd::Station>(objectPath, m_stations, props);
-//            connect(station, &iwd::Station::propertiesChanged, this, &Iwd::onPropertiesChanged);
             if (!m_signalAgent.path().isEmpty()) {
                 QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(station->RegisterSignalLevelAgent(m_signalAgent, m_interestingSignalLevels));
                 connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onPendingCallComplete);
@@ -228,8 +234,23 @@ void Iwd::onPendingCallComplete(QDBusPendingCallWatcher *call)
     if (call->isError() || call->error().type() != QDBusError::NoError) {
         qWarning() << "pending call failed" << call->error() << call->isError();
     }
+//    qDebug() << call->
 
     call->deleteLater();
+}
+
+void Iwd::onGetOrderedNetworksReply(QDBusPendingCallWatcher *watcher)
+{
+    QDBusPendingReply<OrderedNetworkList> reply = *watcher;
+    if (!reply.isError()) {
+        for (const QPair<QDBusObjectPath,int> &network : reply.value()) {
+            qDebug() << "signal level for" << network.first.path() << network.second;
+            emit signalLevelChanged(network.first.path(), network.second);
+        }
+    } else {
+        qWarning() << "Error calling get ordered networks" << reply.error().message();
+    }
+    watcher->deleteLater();
 }
 
 void Iwd::onPropertiesChanged(const QString &interfaceName, const QVariantMap &changedProperties, const QStringList &invalidatedProperties)

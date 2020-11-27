@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
 
     qRegisterMetaType<OrderedNetworkList>("OrderedNetworkList");
     qDBusRegisterMetaType<OrderedNetworkList>();
+    qDBusRegisterMetaType<QPair<QDBusObjectPath,int16_t>>();
 
     qRegisterMetaType<LevelsList>("LevelsList");
     qDBusRegisterMetaType<LevelsList>();
