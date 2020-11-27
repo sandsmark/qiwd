@@ -13,9 +13,13 @@ set_source_files_properties(dbusinterface.xml
 
 set(qiwd_SRCS
     main.cpp
-    Iwd.cpp
+
     AuthUi.cpp
+    AuthUi.h
+    Iwd.cpp
+    Iwd.h
     Window.cpp
+    Window.h
 
     CustomTypes.h
     )
