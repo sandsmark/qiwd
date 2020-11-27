@@ -9,6 +9,7 @@
 
 class QListWidget;
 class QComboBox;
+class QPushButton;
 class AuthUi;
 class SignalLevelAgent;
 
@@ -26,17 +27,20 @@ public:
     explicit Window(QWidget *parent = nullptr);
 
 private slots:
-    void onKnownNetworkRemoved(const QString &networkId);
+    void onKnownNetworkRemoved(const QString &networkId, const QString &name);
     void onKnownNetworkAdded(const QString &networkId, const QString &name);
 
     void onDeviceAdded(const QString &stationId, const QString &name);
     void onDeviceRemoved(const QString &stationId);
     void onDisconnectDevice();
+    void onConnectDevice();
 
     void onVisibleNetworkRemoved(const QString &stationId, const QString &name);
     void onVisibleNetworkAdded(const QString &stationId, const QString &name);
 
     void onStationSignalChanged(const QString &stationId, int newLevel);
+
+    void onSelectionChanged();
 
 private:
     QListWidget *m_knownNetworksList = nullptr;
@@ -46,6 +50,7 @@ private:
     Iwd m_iwd;
     QPointer<AuthUi> m_authUi;
     QPointer<SignalLevelAgent> m_signalAgent;
+    QPushButton *m_connectButton = nullptr;
 };
 
 #endif // WINDOW_H

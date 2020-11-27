@@ -39,6 +39,22 @@ void Iwd::setSignalAgent(const QDBusObjectPath &agentPath, const LevelsList &int
     m_interestingSignalLevels = interestingLevels;
 }
 
+void Iwd::connectNetwork(const QString &networkId)
+{
+    if (networkId.isEmpty()) {
+        qWarning() << "Can't connect to empty network id";
+        return;
+    }
+    QPointer<iwd::Network> net = m_networks.value(QDBusObjectPath(networkId));
+    if (!net) {
+        qWarning() << "Unknown network" << networkId;
+        return;
+    }
+
+    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(net->Connect());
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onPendingCallComplete);
+}
+
 void Iwd::disconnectStation(const QString &stationId)
 {
     QDBusObjectPath dbusPath(stationId);
@@ -115,7 +131,7 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
                 continue;
             }
             QPointer<iwd::KnownNetwork> network = m_knownNetworks.take(object_path);
-            emit knownNetworkRemoved(network->path());
+            emit knownNetworkRemoved(network->path(), network->name());
             network->deleteLater();
             continue;
         }

@@ -9,17 +9,10 @@
 #include <QListWidgetItem>
 #include <QPushButton>
 
-void Window::onKnownNetworkRemoved(const QString &networkId)
+void Window::onKnownNetworkRemoved(const QString &networkId, const QString &name)
 {
-//    const QString name = m_iwd.networkName(networkId);
-//    if (name.isEmpty()) {
-//        qWarning() << "No name for" << networkId;
-//        return;
-//    }
+    qDebug() << "known network removed" << networkId << name;
 
-//    for (const QListWidgetItem *item : m_knownNetworksList->findItems(name, Qt::MatchExactly)) {
-//        delete m_knownNetworksList->takeItem(m_knownNetworksList->row(item));
-//    }
     // ugly, but don't know a better way
     bool found = false;
     do {
@@ -37,8 +30,7 @@ void Window::onKnownNetworkRemoved(const QString &networkId)
 
 void Window::onKnownNetworkAdded(const QString &networkId, const QString &name)
 {
-    qDebug() << "known network" << networkId << name;
-    Q_UNUSED(networkId);
+    qDebug() << "known network added" << networkId << name;
     QListWidgetItem *item = new NetworkItem(QIcon::fromTheme("network-wireless-disconnected"), name);
     item->setData(Qt::UserRole, networkId);
     item->setData(Qt::UserRole + 1, 100);
@@ -62,6 +54,30 @@ void Window::onDeviceRemoved(const QString &stationId)
 void Window::onDisconnectDevice()
 {
     m_iwd.disconnectStation(m_deviceList->currentData().toString());
+}
+
+void Window::onConnectDevice()
+{
+    QList<QListWidgetItem*> selected = m_networkList->selectedItems();
+    QString id;
+    if (!selected.isEmpty()) {
+        qDebug() << "no generic selected";
+        id = selected.first()->data(Qt::UserRole).toString();
+    } else {
+        selected = m_knownNetworksList->selectedItems();
+        if (selected.isEmpty()) {
+            qDebug() << "No known selected";
+            return;
+        }
+        id = m_iwd.networkId(selected.first()->text());
+    }
+    if (id.isEmpty()) {
+        qWarning() << "No network selected";
+        return;
+    }
+    m_iwd.connectNetwork(id);
+
+
 }
 
 void Window::onVisibleNetworkRemoved(const QString &stationId, const QString &name)
@@ -144,6 +160,11 @@ void Window::onStationSignalChanged(const QString &stationId, int newLevel)
 
 }
 
+void Window::onSelectionChanged()
+{
+    m_connectButton->setEnabled(!m_knownNetworksList->selectedItems().isEmpty() || !m_networkList->selectedItems().isEmpty());
+}
+
 Window::Window(QWidget *parent) : QWidget(parent)
 {
     QVBoxLayout *mainLayout = new QVBoxLayout;
@@ -154,16 +175,26 @@ Window::Window(QWidget *parent) : QWidget(parent)
     QHBoxLayout *devicesLayout = new QHBoxLayout;
     m_deviceList = new QComboBox;
     QPushButton *disconnectButton = new QPushButton(tr("Disconnect"));
+    m_connectButton = new QPushButton(tr("Connect"));
+    m_connectButton->setEnabled(false);
 
-    devicesLayout->addStretch();
     devicesLayout->addWidget(m_deviceList);
     devicesLayout->addWidget(disconnectButton);
+    devicesLayout->addStretch();
+    devicesLayout->addWidget(m_connectButton);
 
     mainLayout->addLayout(devicesLayout);
     mainLayout->addWidget(m_networkList);
     mainLayout->addWidget(m_knownNetworksList);
 
+    connect(m_networkList, &QListWidget::itemClicked, m_knownNetworksList, &QListWidget::clearSelection);
+    connect(m_knownNetworksList, &QListWidget::itemClicked, m_networkList, &QListWidget::clearSelection);
+
+    connect(m_networkList, &QListWidget::itemSelectionChanged, this, &Window::onSelectionChanged);
+    connect(m_knownNetworksList, &QListWidget::itemSelectionChanged, this, &Window::onSelectionChanged);
+
     connect(disconnectButton, &QPushButton::clicked, this, &Window::onDisconnectDevice);
+    connect(m_connectButton, &QPushButton::clicked, this, &Window::onConnectDevice);
 
     connect(&m_iwd, &Iwd::visibleNetworkAdded, this, &Window::onVisibleNetworkAdded);
     connect(&m_iwd, &Iwd::visibleNetworkRemoved, this, &Window::onVisibleNetworkRemoved);

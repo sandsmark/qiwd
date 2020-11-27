@@ -27,11 +27,26 @@ public:
         return m_networks[path]->name();
     }
 
+    QString networkId(const QString &name) {
+        // TODO: match on the last part of the object path ID
+        QMapIterator<QDBusObjectPath, QPointer<iwd::Network>> it(m_networks);
+        while (it.hasNext()) {
+            it.next();
+            if (it.value()->name() == name) {
+                return it.value()->path();
+            }
+        }
+        qDebug() << "Failed to find" << name;
+
+        return QString();
+    }
+
     void setAuthAgent(const QDBusObjectPath &agentPath);
 
     void setSignalAgent(const QDBusObjectPath &agentPath, const LevelsList &interestingLevels);
 
 public slots:
+    void connectNetwork(const QString &networkId);
     void disconnectStation(const QString &stationId);
 
 signals:
@@ -39,7 +54,7 @@ signals:
     void visibleNetworkAdded(const QString &id, const QString &name);
     void deviceAdded(const QString &stationId, const QString &name);
 
-    void knownNetworkRemoved(const QString &name);
+    void knownNetworkRemoved(const QString &id, const QString &name);
     void visibleNetworkRemoved(const QString &id, const QString &name);
     void deviceRemoved(const QString &name);
 
