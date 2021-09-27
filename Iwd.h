@@ -59,7 +59,7 @@ public slots:
 
 signals:
     void knownNetworkAdded(const QString &id, const QString &name);
-    void visibleNetworkAdded(const QString &id, const QString &name);
+    void visibleNetworkAdded(const QString &id, const QString &name, const bool connected, const bool isKnown);
     void deviceAdded(const QString &stationId, const QString &name);
 
     void knownNetworkRemoved(const QString &id, const QString &name);
@@ -68,6 +68,11 @@ signals:
 
     void signalLevelChanged(const QString &station, int level);
     void stationScanningChanged(const QString &station, bool scanning);
+
+    void stationStateChanged(const QString &stationId, const QString &state);
+    void stationCurrentNetworkChanged(const QString &stationId, const QString &networkId);
+    void networkConnectedChanged(const QString &networkId, bool connected);
+    void visibleNetworkKnownChanged(const QString &id, const bool isKnown);
 
 private slots:
     void onManagedObjectsReceived(QDBusPendingCallWatcher *watcher);

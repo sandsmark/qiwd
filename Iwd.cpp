@@ -220,7 +220,8 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
             iwd::Network *network = addObject<iwd::Network>(objectPath, m_networks, props);
             //watchProperties(network);
 //            connect(network, &iwd::Network::propertiesChanged, this, &Iwd::onPropertiesChanged);
-            emit visibleNetworkAdded(network->path(), network->name());
+            emit visibleNetworkAdded(network->path(), network->name(), network->connected(), !network->knownNetwork().path().isEmpty());
+            qDebug() << "Visible network known network" << network->knownNetwork().path();
             continue;
         }
 
@@ -241,6 +242,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
                 QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(station->RegisterSignalLevelAgent(m_signalAgent, m_interestingSignalLevels));
                 connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onPendingCallComplete);
             }
+            emit stationCurrentNetworkChanged(station->path(), station->connectedNetwork().path());
             continue;
         }
 
@@ -298,6 +300,28 @@ void Iwd::onPropertiesChanged(QDBusAbstractInterface *intf, const QString &inter
             }
 
             emit stationScanningChanged(intf->path(), isScanning);
+        }
+        if (changedProperties.contains("ConnectedNetwork")) {
+            const QString network = changedProperties["ConnectedNetwork"].toString();
+            qDebug() << "Connected changed" << network;
+            emit stationCurrentNetworkChanged(station->path(), network);
+        }
+
+        if (changedProperties.contains("State")) {
+            const QString state = changedProperties["State"].toString();
+            emit stationStateChanged(intf->path(), state);
+        }
+    } else if (interfaceName == iwd::Network::staticInterfaceName()) {
+        if (changedProperties.contains("LastConnectedTime")) {
+            qDebug() << "Last connected changed";
+        }
+        if (changedProperties.contains("Connected")) {
+            const bool connected = changedProperties["Connected"].toBool();
+            emit networkConnectedChanged(intf->path(), connected);
+        }
+        if (changedProperties.contains("KnownNetwork")) {
+            const QString knownPath = changedProperties["KnownNetwork"].toString();
+            emit visibleNetworkKnownChanged(intf->path(), !knownPath.isEmpty());
         }
     } else {
         qWarning() << "Unhandled property change";
