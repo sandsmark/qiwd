@@ -38,6 +38,7 @@ void Window::onKnownNetworkAdded(const QString &networkId, const QString &name, 
     QListWidgetItem *item = new NetworkItem(QIcon::fromTheme("network-wireless-disconnected"), name);
     item->setData(Qt::UserRole, networkId);
     item->setData(Qt::UserRole + 1, 100);
+    item->setData(Qt::UserRole + 2, enabled);
     item->setCheckState(enabled ? Qt::Checked : Qt::Unchecked);
     m_knownNetworksList->addItem(item);
     m_knownNetworksList->sortItems();
@@ -50,11 +51,12 @@ void Window::onKnownNetworkEnabledChanged(const QString &networkId, const bool e
         if (net->data(Qt::UserRole).toString() != networkId) {
             continue;
         }
+        net->setData(Qt::UserRole + 2, enabled);
         net->setCheckState(enabled ? Qt::Checked : Qt::Unchecked);
     }
 }
 
-void Window::onKnownNetworkDoubleClicked(QListWidgetItem *item)
+void Window::onKnownNetworkCheckedChanged(QListWidgetItem *item)
 {
     const QString networkId = item->data(Qt::UserRole).toString();
     if (networkId.isEmpty()) {
@@ -62,7 +64,14 @@ void Window::onKnownNetworkDoubleClicked(QListWidgetItem *item)
         return;
     }
 
-    m_iwd.setKnownNetworkEnabled(networkId, !(item->checkState() == Qt::Checked));
+    // Don't know of any better way to see if it was the user who clicked
+    const bool netEnabled = item->data(Qt::UserRole + 2).toBool();
+    const bool checked = item->checkState() == Qt::Checked;
+    if (netEnabled == checked) {
+        return;
+    }
+
+    m_iwd.setKnownNetworkEnabled(networkId, checked);
 }
 
 
@@ -316,7 +325,7 @@ Window::Window(QWidget *parent) : QWidget(parent)
 
     connect(m_networkList, &QListWidget::itemClicked, m_knownNetworksList, &QListWidget::clearSelection);
     connect(m_knownNetworksList, &QListWidget::itemClicked, m_networkList, &QListWidget::clearSelection);
-    connect(m_knownNetworksList, &QListWidget::itemDoubleClicked, this, &Window::onKnownNetworkDoubleClicked);
+    connect(m_knownNetworksList, &QListWidget::itemChanged, this, &Window::onKnownNetworkCheckedChanged);
 
     connect(m_networkList, &QListWidget::itemSelectionChanged, this, &Window::onSelectionChanged);
     connect(m_knownNetworksList, &QListWidget::itemSelectionChanged, this, &Window::onSelectionChanged);

@@ -59,7 +59,7 @@ private slots:
 
     void onDeviceSelectionChanged();
     void onNetworkDoubleClicked(QListWidgetItem *item);
-    void onKnownNetworkDoubleClicked(QListWidgetItem *item);
+    void onKnownNetworkCheckedChanged(QListWidgetItem *item);
     void onScanningChanged(const QString &station, bool isScanning);
 
     void onStationCurrentNetworkChanged(const QString &stationId, const QString &networkId);
