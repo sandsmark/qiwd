@@ -9,6 +9,7 @@
 #include <QListWidgetItem>
 #include <QPushButton>
 #include <QLabel>
+#include <QProgressBar>
 
 void Window::onKnownNetworkRemoved(const QString &networkId, const QString &name)
 {
@@ -31,15 +32,39 @@ void Window::onKnownNetworkRemoved(const QString &networkId, const QString &name
     m_knownNetworksList->sortItems();
 }
 
-void Window::onKnownNetworkAdded(const QString &networkId, const QString &name)
+void Window::onKnownNetworkAdded(const QString &networkId, const QString &name, const bool enabled)
 {
     qDebug() << "known network added" << networkId << name;
     QListWidgetItem *item = new NetworkItem(QIcon::fromTheme("network-wireless-disconnected"), name);
     item->setData(Qt::UserRole, networkId);
     item->setData(Qt::UserRole + 1, 100);
+    item->setCheckState(enabled ? Qt::Checked : Qt::Unchecked);
     m_knownNetworksList->addItem(item);
     m_knownNetworksList->sortItems();
 }
+
+void Window::onKnownNetworkEnabledChanged(const QString &networkId, const bool enabled)
+{
+    for (int i=0; i<m_knownNetworksList->count(); i++) {
+        QListWidgetItem *net = m_knownNetworksList->item(i);
+        if (net->data(Qt::UserRole).toString() != networkId) {
+            continue;
+        }
+        net->setCheckState(enabled ? Qt::Checked : Qt::Unchecked);
+    }
+}
+
+void Window::onKnownNetworkDoubleClicked(QListWidgetItem *item)
+{
+    const QString networkId = item->data(Qt::UserRole).toString();
+    if (networkId.isEmpty()) {
+        qWarning() << "Missing network id in" << item;
+        return;
+    }
+
+    m_iwd.setKnownNetworkEnabled(networkId, !(item->checkState() == Qt::Checked));
+}
+
 
 void Window::onDeviceAdded(const QString &stationId, const QString &name)
 {
@@ -53,6 +78,14 @@ void Window::onDeviceRemoved(const QString &stationId)
             m_deviceList->removeItem(i);
         }
     }
+}
+
+void Window::onDeviceStateChanged(const QString &stationId, const QString &state)
+{
+    if (m_deviceList->currentData().toString() != stationId) {
+        return;
+    }
+    m_deviceStateLabel->setText(state);
 }
 
 void Window::onStationCurrentNetworkChanged(const QString &stationId, const QString &networkId)
@@ -121,8 +154,8 @@ void Window::onVisibleNetworkKnownChanged(const QString &networkId, const bool i
             continue;
         }
         net->setData(Qt::UserRole + 2, isKnown);
-        QFont font;
-        font.setBold(isKnown);
+        QFont font = net->font();
+        font.setItalic(!isKnown);
         net->setFont(font);
         return;
     }
@@ -136,7 +169,10 @@ void Window::onNetworkConnectedChanged(const QString &networkId, const bool conn
             continue;
         }
 
-        net->setCheckState(connected ? Qt::Checked : Qt::Unchecked);
+        QFont font = net->font();
+        font.setBold(connected);
+        net->setFont(font);
+        net->setData(Qt::UserRole + 3, connected);
         return;
     }
 }
@@ -148,12 +184,12 @@ void Window::onVisibleNetworkAdded(const QString &stationId, const QString &name
     item->setData(Qt::UserRole, stationId);
     item->setData(Qt::UserRole + 1, -1000);
     item->setData(Qt::UserRole + 2, isKnown);
+    item->setData(Qt::UserRole + 3, connected);
 
-    QFont font;
-    font.setBold(isKnown);
+    QFont font = item->font();
+    font.setItalic(!isKnown);
+    font.setBold(connected);
     item->setFont(font);
-
-    item->setCheckState(connected ? Qt::Checked : Qt::Unchecked);
 
     item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
     m_networkList->addItem(item);
@@ -220,6 +256,17 @@ void Window::onSelectionChanged()
     m_connectButton->setEnabled(!m_knownNetworksList->selectedItems().isEmpty() || !m_networkList->selectedItems().isEmpty());
 }
 
+void Window::onNetworkDoubleClicked(QListWidgetItem *item)
+{
+    const QString networkId = item->data(Qt::UserRole).toString();
+    if (networkId.isEmpty()) {
+        qWarning() << "no network in" << item;
+        return;
+    }
+
+    m_iwd.connectNetwork(networkId);
+}
+
 void Window::onDeviceSelectionChanged()
 {
     m_scanButton->setEnabled(!m_iwd.isScanning(m_deviceList->currentData().toString()));
@@ -244,12 +291,17 @@ Window::Window(QWidget *parent) : QWidget(parent)
 
     QHBoxLayout *devicesLayout = new QHBoxLayout;
     m_deviceList = new QComboBox;
+    m_deviceStateLabel = new QLabel;
     QPushButton *disconnectButton = new QPushButton(tr("Disconnect"));
+    disconnectButton->setIcon(QIcon::fromTheme("network-disconnect"));
     m_scanButton = new QPushButton(tr("Scan"));
+    m_scanButton->setIcon(QIcon::fromTheme("view-refresh"));
     m_connectButton = new QPushButton(tr("Connect"));
     m_connectButton->setEnabled(false);
+    m_connectButton->setIcon(QIcon::fromTheme("network-connect"));
 
     devicesLayout->addWidget(m_deviceList);
+    devicesLayout->addWidget(m_deviceStateLabel);
     devicesLayout->addWidget(disconnectButton);
     devicesLayout->addWidget(m_scanButton);
     devicesLayout->addStretch();
@@ -264,10 +316,13 @@ Window::Window(QWidget *parent) : QWidget(parent)
 
     connect(m_networkList, &QListWidget::itemClicked, m_knownNetworksList, &QListWidget::clearSelection);
     connect(m_knownNetworksList, &QListWidget::itemClicked, m_networkList, &QListWidget::clearSelection);
+    connect(m_knownNetworksList, &QListWidget::itemDoubleClicked, this, &Window::onKnownNetworkDoubleClicked);
 
     connect(m_networkList, &QListWidget::itemSelectionChanged, this, &Window::onSelectionChanged);
     connect(m_knownNetworksList, &QListWidget::itemSelectionChanged, this, &Window::onSelectionChanged);
     connect(m_deviceList, &QComboBox::currentTextChanged, this, &Window::onDeviceSelectionChanged);
+
+    connect(m_networkList, &QListWidget::itemDoubleClicked, this, &Window::onNetworkDoubleClicked);
 
     connect(disconnectButton, &QPushButton::clicked, this, &Window::onDisconnectDevice);
     connect(m_scanButton, &QPushButton::clicked, &m_iwd, &Iwd::scan);
@@ -277,11 +332,12 @@ Window::Window(QWidget *parent) : QWidget(parent)
     connect(&m_iwd, &Iwd::visibleNetworkRemoved, this, &Window::onVisibleNetworkRemoved);
     connect(&m_iwd, &Iwd::knownNetworkAdded, this, &Window::onKnownNetworkAdded);
     connect(&m_iwd, &Iwd::knownNetworkRemoved, this, &Window::onKnownNetworkRemoved);
+    connect(&m_iwd, &Iwd::knownNetworkEnabledChanged, this, &Window::onKnownNetworkEnabledChanged);
     connect(&m_iwd, &Iwd::deviceAdded, this, &Window::onDeviceAdded);
     connect(&m_iwd, &Iwd::deviceRemoved, this, &Window::onDeviceRemoved);
     connect(&m_iwd, &Iwd::signalLevelChanged, this, &Window::onStationSignalChanged);
     connect(&m_iwd, &Iwd::stationScanningChanged, this, &Window::onScanningChanged);
-    //connect(&m_iwd, &Iwd::stationStateChanged, this, &Window::onStationStateChanged);
+    connect(&m_iwd, &Iwd::stationStateChanged, this, &Window::onDeviceStateChanged);
     connect(&m_iwd, &Iwd::stationCurrentNetworkChanged, this, &Window::onStationCurrentNetworkChanged);
     connect(&m_iwd, &Iwd::networkConnectedChanged, this, &Window::onNetworkConnectedChanged);
     connect(&m_iwd, &Iwd::visibleNetworkKnownChanged, this, &Window::onVisibleNetworkKnownChanged);

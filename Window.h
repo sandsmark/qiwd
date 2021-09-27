@@ -10,14 +10,17 @@
 class QListWidget;
 class QComboBox;
 class QPushButton;
+class QLabel;
 class AuthUi;
 class SignalLevelAgent;
 
 struct NetworkItem : public QListWidgetItem {
     using QListWidgetItem::QListWidgetItem;
     bool operator<(const QListWidgetItem &other) const override {
-        if (checkState() != other.checkState()) {
-            return checkState() > other.checkState();
+        const bool connected = data(Qt::UserRole + 3).toBool();
+        const bool otherConnected = other.data(Qt::UserRole + 3).toBool();
+        if (connected != otherConnected) {
+            return connected > otherConnected;
         }
         const bool isKnown = data(Qt::UserRole + 2).toBool();
         const bool otherKnown = other.data(Qt::UserRole + 2).toBool();
@@ -36,13 +39,15 @@ public:
 
 private slots:
     void onKnownNetworkRemoved(const QString &networkId, const QString &name);
-    void onKnownNetworkAdded(const QString &networkId, const QString &name);
+    void onKnownNetworkAdded(const QString &networkId, const QString &name, const bool enabled);
+    void onKnownNetworkEnabledChanged(const QString &networkId, const bool enabled);
     void onNetworkConnectedChanged(const QString &networkId, const bool connected);
 
     void onDeviceAdded(const QString &stationId, const QString &name);
     void onDeviceRemoved(const QString &stationId);
     void onDisconnectDevice();
     void onConnectDevice();
+    void onDeviceStateChanged(const QString &deviceId, const QString &state);
 
     void onVisibleNetworkRemoved(const QString &stationId, const QString &name);
     void onVisibleNetworkAdded(const QString &stationId, const QString &name, const bool connected, const bool isKnown);
@@ -53,6 +58,8 @@ private slots:
     void onSelectionChanged();
 
     void onDeviceSelectionChanged();
+    void onNetworkDoubleClicked(QListWidgetItem *item);
+    void onKnownNetworkDoubleClicked(QListWidgetItem *item);
     void onScanningChanged(const QString &station, bool isScanning);
 
     void onStationCurrentNetworkChanged(const QString &stationId, const QString &networkId);
@@ -61,6 +68,7 @@ private:
     QListWidget *m_knownNetworksList = nullptr;
     QListWidget *m_networkList = nullptr;
     QComboBox *m_deviceList = nullptr;
+    QLabel *m_deviceStateLabel = nullptr;
 
     Iwd m_iwd;
     QPointer<AuthUi> m_authUi;

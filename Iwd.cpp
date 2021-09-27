@@ -67,6 +67,18 @@ void Iwd::disconnectStation(const QString &stationId)
     m_stations[dbusPath]->Disconnect();
 }
 
+void Iwd::setKnownNetworkEnabled(const QString &networkId, const bool enabled)
+{
+    QDBusObjectPath dbusPath(networkId);
+    if (!m_knownNetworks.contains(dbusPath)) {
+        qWarning() << "Unknown network id" << networkId;
+        return;
+    }
+    qDebug() << "Setting" << networkId << "as enabled?:" << enabled;
+
+    m_knownNetworks[dbusPath]->setAutoConnect(enabled);
+}
+
 void Iwd::scan()
 {
     QMapIterator<QDBusObjectPath, QPointer<iwd::Station>> it(m_stations);
@@ -211,7 +223,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         if (interfaceName == iwd::KnownNetwork::staticInterfaceName()) {
             iwd::KnownNetwork *network = addObject<iwd::KnownNetwork>(objectPath, m_knownNetworks, props);
 //            connect(network, &iwd::KnownNetwork::propertiesChanged, this, &Iwd::onPropertiesChanged);
-            emit knownNetworkAdded(objectPath.path(), network->name());
+            emit knownNetworkAdded(objectPath.path(), network->name(), network->autoConnect());
             //watchProperties(network);
             continue;
         }
@@ -242,7 +254,13 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
                 QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(station->RegisterSignalLevelAgent(m_signalAgent, m_interestingSignalLevels));
                 connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onPendingCallComplete);
             }
-            emit stationCurrentNetworkChanged(station->path(), station->connectedNetwork().path());
+            if (props.contains("ConnectedNetwork")) {
+                emit stationCurrentNetworkChanged(station->path(), qvariant_cast<QDBusObjectPath>(props["ConnectedNetwork"]).path());
+            }
+            if (props.contains("State")) {
+                qDebug() << "State:" << props["State"];
+                emit stationStateChanged(station->path(), props["State"].toString());
+            }
             continue;
         }
 
@@ -302,7 +320,7 @@ void Iwd::onPropertiesChanged(QDBusAbstractInterface *intf, const QString &inter
             emit stationScanningChanged(intf->path(), isScanning);
         }
         if (changedProperties.contains("ConnectedNetwork")) {
-            const QString network = changedProperties["ConnectedNetwork"].toString();
+            const QString network = qvariant_cast<QDBusObjectPath>(changedProperties["ConnectedNetwork"]).path();
             qDebug() << "Connected changed" << network;
             emit stationCurrentNetworkChanged(station->path(), network);
         }
@@ -320,8 +338,12 @@ void Iwd::onPropertiesChanged(QDBusAbstractInterface *intf, const QString &inter
             emit networkConnectedChanged(intf->path(), connected);
         }
         if (changedProperties.contains("KnownNetwork")) {
-            const QString knownPath = changedProperties["KnownNetwork"].toString();
+            const QString knownPath = qvariant_cast<QDBusObjectPath>(changedProperties["KnownNetwork"]).path();
             emit visibleNetworkKnownChanged(intf->path(), !knownPath.isEmpty());
+        }
+    } else if (interfaceName == iwd::KnownNetwork::staticInterfaceName()) {
+        if (changedProperties.contains("AutoConnect")) {
+            emit knownNetworkEnabledChanged(intf->path(), changedProperties["AutoConnect"].toBool());
         }
     } else {
         qWarning() << "Unhandled property change";
