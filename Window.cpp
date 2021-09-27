@@ -9,11 +9,13 @@
 #include <QListWidgetItem>
 #include <QPushButton>
 #include <QLabel>
-#include <QProgressBar>
+#include <QSystemTrayIcon>
+
+Q_LOGGING_CATEGORY(windowLog, "iwd.window", QtInfoMsg)
 
 void Window::onKnownNetworkRemoved(const QString &networkId, const QString &name)
 {
-    qDebug() << "known network removed" << networkId << name;
+    qCDebug(windowLog) << "known network removed" << networkId << name;
 
     // ugly, but don't know a better way
     bool found = false;
@@ -34,7 +36,7 @@ void Window::onKnownNetworkRemoved(const QString &networkId, const QString &name
 
 void Window::onKnownNetworkAdded(const QString &networkId, const QString &name, const bool enabled)
 {
-    qDebug() << "known network added" << networkId << name;
+    qCDebug(windowLog) << "known network added" << networkId << name;
     QListWidgetItem *item = new NetworkItem(QIcon::fromTheme("network-wireless-disconnected"), name);
     item->setData(Qt::UserRole, networkId);
     item->setData(Qt::UserRole + 1, 100);
@@ -60,7 +62,7 @@ void Window::onKnownNetworkCheckedChanged(QListWidgetItem *item)
 {
     const QString networkId = item->data(Qt::UserRole).toString();
     if (networkId.isEmpty()) {
-        qWarning() << "Missing network id in" << item;
+        qCWarning(windowLog) << "Missing network id in" << item;
         return;
     }
 
@@ -103,7 +105,7 @@ void Window::onStationCurrentNetworkChanged(const QString &stationId, const QStr
         return;
     }
     m_currentNetworkId = networkId;
-    qDebug() << "current network" << m_currentNetworkId;
+    qCDebug(windowLog) << "current network" << m_currentNetworkId;
 }
 
 void Window::onDisconnectDevice()
@@ -116,18 +118,18 @@ void Window::onConnectDevice()
     QList<QListWidgetItem*> selected = m_networkList->selectedItems();
     QString id;
     if (!selected.isEmpty()) {
-        qDebug() << "no generic selected";
+        qCDebug(windowLog) << "no generic selected";
         id = selected.first()->data(Qt::UserRole).toString();
     } else {
         selected = m_knownNetworksList->selectedItems();
         if (selected.isEmpty()) {
-            qDebug() << "No known selected";
+            qCDebug(windowLog) << "No known selected";
             return;
         }
         id = m_iwd.networkId(selected.first()->text());
     }
     if (id.isEmpty()) {
-        qWarning() << "No network selected";
+        qCWarning(windowLog) << "No network selected";
         return;
     }
     m_iwd.connectNetwork(id);
@@ -137,7 +139,7 @@ void Window::onConnectDevice()
 
 void Window::onVisibleNetworkRemoved(const QString &stationId, const QString &name)
 {
-    qDebug() << "Visible network removed" << stationId << name;
+    qCDebug(windowLog) << "Visible network removed" << stationId << name;
     // ugly, but don't know a better way
     bool found = false;
     do {
@@ -188,7 +190,7 @@ void Window::onNetworkConnectedChanged(const QString &networkId, const bool conn
 
 void Window::onVisibleNetworkAdded(const QString &stationId, const QString &name, const bool connected, const bool isKnown)
 {
-    qDebug() << "Visible network added" << stationId << name;
+    qCDebug(windowLog) << "Visible network added" << stationId << name;
     QListWidgetItem *item = new NetworkItem(QIcon::fromTheme("network-wireless-symbolic"), name);
     item->setData(Qt::UserRole, stationId);
     item->setData(Qt::UserRole + 1, -1000);
@@ -218,7 +220,7 @@ void Window::onStationSignalChanged(const QString &stationId, int newLevel)
         strength = -2.f * (strength/100. + 1.f);
     }
     strength *= -100;
-    qDebug() << "New level for" << m_iwd.networkName(stationId) << strength;
+    qCDebug(windowLog) << "New level for" << m_iwd.networkName(stationId) << strength;
 
 
     QIcon signalIcon;
@@ -233,6 +235,10 @@ void Window::onStationSignalChanged(const QString &stationId, int newLevel)
         signalIcon = QIcon::fromTheme("network-wireless-signal-weak");
     } else  {
         signalIcon = QIcon::fromTheme("network-wireless-signal-none");
+    }
+    if (stationId == m_currentNetworkId) {
+        qCDebug(windowLog) << "Updating tray";
+        m_tray->setIcon(signalIcon);
     }
     int found = 0;
     for (int i=0; i<m_networkList->count(); i++) {
@@ -253,9 +259,9 @@ void Window::onStationSignalChanged(const QString &stationId, int newLevel)
     m_networkList->sortItems();
     m_knownNetworksList->sortItems();
     if (!found) {
-        qDebug() << "Failed to find" << stationId;
+        qCDebug(windowLog) << "Failed to find" << stationId;
     } else if (found > 1) {
-        qDebug() << "Found too many:" << stationId;
+        qCDebug(windowLog) << "Found too many:" << stationId;
     }
 
 }
@@ -269,7 +275,7 @@ void Window::onNetworkDoubleClicked(QListWidgetItem *item)
 {
     const QString networkId = item->data(Qt::UserRole).toString();
     if (networkId.isEmpty()) {
-        qWarning() << "no network in" << item;
+        qCWarning(windowLog) << "no network in" << item;
         return;
     }
 
@@ -323,6 +329,10 @@ Window::Window(QWidget *parent) : QWidget(parent)
     mainLayout->addWidget(new QLabel(tr("Known networks:")));
     mainLayout->addWidget(m_knownNetworksList);
 
+    m_tray = new QSystemTrayIcon(this);
+    m_tray->setIcon(QIcon::fromTheme("network-wireless-acquiring"));
+    m_tray->show();
+
     connect(m_networkList, &QListWidget::itemClicked, m_knownNetworksList, &QListWidget::clearSelection);
     connect(m_knownNetworksList, &QListWidget::itemClicked, m_networkList, &QListWidget::clearSelection);
     connect(m_knownNetworksList, &QListWidget::itemChanged, this, &Window::onKnownNetworkCheckedChanged);
@@ -351,13 +361,15 @@ Window::Window(QWidget *parent) : QWidget(parent)
     connect(&m_iwd, &Iwd::networkConnectedChanged, this, &Window::onNetworkConnectedChanged);
     connect(&m_iwd, &Iwd::visibleNetworkKnownChanged, this, &Window::onVisibleNetworkKnownChanged);
 
+    connect(m_tray, &QSystemTrayIcon::activated, this, [this]() { setVisible(!isVisible()); });
+
 
     m_signalAgent = new SignalLevelAgent(&m_iwd);
     if (QDBusConnection::systemBus().registerObject(m_signalAgent->objectPath().path(), this)) {
         m_iwd.setSignalAgent(m_signalAgent->objectPath(), {-20, -40, -49, -50, -51, -60, -80});
-        qDebug() << "set signal agent";
+        qCDebug(windowLog) << "set signal agent";
     } else {
-        qWarning() << "Failed to register signal agent";
+        qCWarning(windowLog) << "Failed to register signal agent";
     }
     connect(m_signalAgent, &SignalLevelAgent::signalLevelChanged, this, &Window::onStationSignalChanged);
 
@@ -365,7 +377,7 @@ Window::Window(QWidget *parent) : QWidget(parent)
     if (QDBusConnection::systemBus().registerObject(m_authUi->objectPath().path(), this)) {
         m_iwd.setAuthAgent(m_authUi->objectPath());
     } else {
-        qWarning() << "Failed to register auth agent";
+        qCWarning(windowLog) << "Failed to register auth agent";
     }
 
     m_iwd.init();

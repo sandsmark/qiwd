@@ -8,6 +8,8 @@
 // Let's not get too carried away
 using namespace net::connman;
 
+Q_DECLARE_LOGGING_CATEGORY(iwdLog)
+
 class SignalLevelAgent;
 class AuthAgent;
 
@@ -36,7 +38,7 @@ public:
                 return it.value()->path();
             }
         }
-        qDebug() << "Failed to find" << name;
+        qCDebug(iwdLog) << "Failed to find" << name;
 
         return QString();
     }
@@ -101,7 +103,7 @@ private:
     template<class T>
     T* addObject(const QDBusObjectPath &path, QMap<QDBusObjectPath, QPointer<T>> &map, const QVariantMap &props) {
         if (map.contains(path)) {
-            qWarning() << "Already has" << path.path();
+            qCWarning(iwdLog) << "Already has" << path.path();
             map.take(path)->deleteLater();
         }
         T *object = new T(m_iwd->service(), path.path(), m_iwd->connection(), this);
@@ -144,12 +146,12 @@ signals:
 
 public slots:
     QDBusVariant Changed(const QDBusObjectPath &object, uchar level) {
-        qDebug() << "Signal changed" << level;
+        qCDebug(iwdLog) << "Signal changed" << level;
         emit signalLevelChanged(object.path(), level);
         return QDBusVariant("");
     }
     Q_NOREPLY void Release(const QDBusObjectPath &object) {
-        qDebug() << "deleting signal level listener" << object.path();
+        qCDebug(iwdLog) << "deleting signal level listener" << object.path();
         deleteLater();
     }
 
@@ -255,6 +257,5 @@ protected:
 private:
     QDBusObjectPath m_path;
 };
-
 
 #endif // IWD_H

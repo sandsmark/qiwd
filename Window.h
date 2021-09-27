@@ -13,6 +13,7 @@ class QPushButton;
 class QLabel;
 class AuthUi;
 class SignalLevelAgent;
+class QSystemTrayIcon;
 
 struct NetworkItem : public QListWidgetItem {
     using QListWidgetItem::QListWidgetItem;
@@ -77,6 +78,9 @@ private:
     QPushButton *m_scanButton = nullptr;
 
     QString m_currentNetworkId;
+    QSystemTrayIcon *m_tray = nullptr;
 };
+
+Q_DECLARE_LOGGING_CATEGORY(windowLog)
 
 #endif // WINDOW_H

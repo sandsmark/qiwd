@@ -1,5 +1,7 @@
 #include "Iwd.h"
 
+Q_LOGGING_CATEGORY(iwdLog, "iwd.daemon", QtInfoMsg)
+
 Iwd::Iwd(QObject *parent) : QObject(parent)
 {
     m_iwd = new org::freedesktop::DBus::ObjectManager("net.connman.iwd", "/", QDBusConnection::systemBus(), this);
@@ -8,7 +10,7 @@ Iwd::Iwd(QObject *parent) : QObject(parent)
 bool Iwd::init()
 {
     if (!m_iwd->isValid()) {
-        qWarning() << "Failed to connect to iwd";
+        qCWarning(iwdLog) << "Failed to connect to iwd";
         return false;
     }
 
@@ -23,7 +25,7 @@ bool Iwd::init()
 void Iwd::setAuthAgent(const QDBusObjectPath &agentPath)
 {
     for (const QPointer<iwd::AgentManager> &manager : m_agentManagers) {
-        qDebug() << "Registering auth agent" << agentPath << "for" << manager->path();
+        qCDebug(iwdLog) << "Registering auth agent" << agentPath << "for" << manager->path();
         manager->RegisterAgent(agentPath);
     }
     m_authAgent = agentPath;
@@ -42,12 +44,12 @@ void Iwd::setSignalAgent(const QDBusObjectPath &agentPath, const LevelsList &int
 void Iwd::connectNetwork(const QString &networkId)
 {
     if (networkId.isEmpty()) {
-        qWarning() << "Can't connect to empty network id";
+        qCWarning(iwdLog) << "Can't connect to empty network id";
         return;
     }
     QPointer<iwd::Network> net = m_networks.value(QDBusObjectPath(networkId));
     if (!net) {
-        qWarning() << "Unknown network" << networkId;
+        qCWarning(iwdLog) << "Unknown network" << networkId;
         return;
     }
 
@@ -59,10 +61,10 @@ void Iwd::disconnectStation(const QString &stationId)
 {
     QDBusObjectPath dbusPath(stationId);
     if (!m_stations.contains(dbusPath)) {
-        qWarning() << "Unknown station id" << stationId;
+        qCWarning(iwdLog) << "Unknown station id" << stationId;
         return;
     }
-    qDebug() << "Disconnecting" << stationId << m_devices[dbusPath]->name();
+    qCDebug(iwdLog) << "Disconnecting" << stationId << m_devices[dbusPath]->name();
 
     m_stations[dbusPath]->Disconnect();
 }
@@ -71,10 +73,10 @@ void Iwd::setKnownNetworkEnabled(const QString &networkId, const bool enabled)
 {
     QDBusObjectPath dbusPath(networkId);
     if (!m_knownNetworks.contains(dbusPath)) {
-        qWarning() << "Unknown network id" << networkId;
+        qCWarning(iwdLog) << "Unknown network id" << networkId;
         return;
     }
-    qDebug() << "Setting" << networkId << "as enabled?:" << enabled;
+    qCDebug(iwdLog) << "Setting" << networkId << "as enabled?:" << enabled;
 
     m_knownNetworks[dbusPath]->setAutoConnect(enabled);
 }
@@ -84,7 +86,7 @@ void Iwd::scan()
     QMapIterator<QDBusObjectPath, QPointer<iwd::Station>> it(m_stations);
     while (it.hasNext()) {
         it.next();
-        qDebug() << "Requesting scan for" << it.value()->path();
+        qCDebug(iwdLog) << "Requesting scan for" << it.value()->path();
         it.value()->Scan();
     }
 }
@@ -93,7 +95,7 @@ void Iwd::onManagedObjectsReceived(QDBusPendingCallWatcher *watcher)
 {
     QDBusPendingReply<ManagedObjectList> reply = *watcher;
     if (reply.isError()) {
-        qDebug() << reply.error().name() << reply.error().message();
+        qCDebug(iwdLog) << reply.error().name() << reply.error().message();
     }
     QMapIterator<QDBusObjectPath,ManagedObject> it(reply.value());
     while (it.hasNext()) {
@@ -103,7 +105,7 @@ void Iwd::onManagedObjectsReceived(QDBusPendingCallWatcher *watcher)
     QMapIterator<QDBusObjectPath, QPointer<iwd::Station>> netIterator(m_stations);
     while (netIterator.hasNext()) {
         netIterator.next();
-        qDebug() << it.value();
+        qCDebug(iwdLog) << it.value();
         QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(netIterator.value()->GetOrderedNetworks());
         connect(watcher, &QDBusPendingCallWatcher::finished, this, &Iwd::onGetOrderedNetworksReply);
     }
@@ -120,7 +122,7 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
         // todo refactor to not duplicate so much
         if (interfaceName == iwd::Adapter::staticInterfaceName()) {
             if (!m_adapters.contains(object_path)) {
-                qWarning() << "No adapter with path" << object_path.path() << "registered";
+                qCWarning(iwdLog) << "No adapter with path" << object_path.path() << "registered";
                 continue;
             }
             m_adapters.take(object_path)->deleteLater();
@@ -128,7 +130,7 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
         }
         if (interfaceName == iwd::Device::staticInterfaceName()) {
             if (!m_devices.contains(object_path)) {
-                qWarning() << "No device with path" << object_path.path() << "registered";
+                qCWarning(iwdLog) << "No device with path" << object_path.path() << "registered";
                 continue;
             }
             QPointer<iwd::Device> device = m_devices.take(object_path);
@@ -138,7 +140,7 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
         }
         if (interfaceName == iwd::Network::staticInterfaceName()) {
             if (!m_networks.contains(object_path)) {
-                qWarning() << "No network with path" << object_path.path() << "registered";
+                qCWarning(iwdLog) << "No network with path" << object_path.path() << "registered";
                 continue;
             }
             QPointer<iwd::Network> network = m_networks.take(object_path);
@@ -149,7 +151,7 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
 
         if (interfaceName == iwd::KnownNetwork::staticInterfaceName()) {
             if (!m_knownNetworks.contains(object_path)) {
-                qWarning() << "No known network with path" << object_path.path() << "registered";
+                qCWarning(iwdLog) << "No known network with path" << object_path.path() << "registered";
                 continue;
             }
             QPointer<iwd::KnownNetwork> network = m_knownNetworks.take(object_path);
@@ -160,7 +162,7 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
 
         if (interfaceName == iwd::AgentManager::staticInterfaceName()) {
             if (!m_agentManagers.contains(object_path)) {
-                qWarning() << "No known agent manager with path" << object_path.path() << "registered";
+                qCWarning(iwdLog) << "No known agent manager with path" << object_path.path() << "registered";
                 continue;
             }
             m_agentManagers.take(object_path)->deleteLater();
@@ -169,7 +171,7 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
 
         if (interfaceName == iwd::Station::staticInterfaceName()) {
             if (!m_stations.contains(object_path)) {
-                qWarning() << "No known stations with path" << object_path.path() << "registered";
+                qCWarning(iwdLog) << "No known stations with path" << object_path.path() << "registered";
                 continue;
             }
             m_stations.take(object_path)->deleteLater();
@@ -178,7 +180,7 @@ void Iwd::onManagedObjectRemoved(const QDBusObjectPath &object_path, const QStri
 
         if (interfaceName == iwd::SimpleConfiguration::staticInterfaceName()) {
             if (!m_wps.contains(object_path)) {
-                qWarning() << "No known simple configuration with path" << object_path.path() << "registered";
+                qCWarning(iwdLog) << "No known simple configuration with path" << object_path.path() << "registered";
                 continue;
             }
             m_wps.take(object_path)->deleteLater();
@@ -206,9 +208,9 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         }
 
         if (interfaceName == iwd::Device::staticInterfaceName()) {
-            qDebug() << "got interface" << "Props" << props;
-            qDebug() << "adapter" << qvariant_cast<QDBusObjectPath>(props["Adapter"]).path();
-            qDebug() << "path:" << objectPath.path();
+            qCDebug(iwdLog) << "got interface" << "Props" << props;
+            qCDebug(iwdLog) << "adapter" << qvariant_cast<QDBusObjectPath>(props["Adapter"]).path();
+            qCDebug(iwdLog) << "path:" << objectPath.path();
             QString name = props.value("Name").toString();
             if (name.isEmpty()) {
                 name = tr("Interface %1").arg(QString::number(m_devices.count() + 1));
@@ -233,7 +235,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
             //watchProperties(network);
 //            connect(network, &iwd::Network::propertiesChanged, this, &Iwd::onPropertiesChanged);
             emit visibleNetworkAdded(network->path(), network->name(), network->connected(), !network->knownNetwork().path().isEmpty());
-            qDebug() << "Visible network known network" << network->knownNetwork().path();
+            qCDebug(iwdLog) << "Visible network known network" << network->knownNetwork().path();
             continue;
         }
 
@@ -247,8 +249,8 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
         }
 
         if (interfaceName == iwd::Station::staticInterfaceName()) {
-            qDebug() << "Got station" << props;
-            qDebug() << objectPath.path();
+            qCDebug(iwdLog) << "Got station" << props;
+            qCDebug(iwdLog) << objectPath.path();
             QPointer<iwd::Station> station = addObject<iwd::Station>(objectPath, m_stations, props);
             if (!m_signalAgent.path().isEmpty()) {
                 QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(station->RegisterSignalLevelAgent(m_signalAgent, m_interestingSignalLevels));
@@ -258,7 +260,7 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
                 emit stationCurrentNetworkChanged(station->path(), qvariant_cast<QDBusObjectPath>(props["ConnectedNetwork"]).path());
             }
             if (props.contains("State")) {
-                qDebug() << "State:" << props["State"];
+                qCDebug(iwdLog) << "State:" << props["State"];
                 emit stationStateChanged(station->path(), props["State"].toString());
             }
             continue;
@@ -269,14 +271,14 @@ void Iwd::onManagedObjectAdded(const QDBusObjectPath &objectPath, const ManagedO
             continue;
         }
 
-        qWarning() << "Unhandled interface" << interfaceName << object.keys() << objectPath.path();
+        qCDebug(iwdLog) << "Unhandled interface" << interfaceName << object.keys() << objectPath.path();
     }
 }
 
 void Iwd::onPendingCallComplete(QDBusPendingCallWatcher *call)
 {
     if (call->isError() || call->error().type() != QDBusError::NoError) {
-        qWarning() << "pending call failed" << call->error() << call->isError();
+        qCWarning(iwdLog) << "pending call failed" << call->error() << call->isError();
     }
 
     call->deleteLater();
@@ -287,11 +289,11 @@ void Iwd::onGetOrderedNetworksReply(QDBusPendingCallWatcher *watcher)
     QDBusPendingReply<OrderedNetworkList> reply = *watcher;
     if (!reply.isError()) {
         for (const QPair<QDBusObjectPath,int> &network : reply.value()) {
-            qDebug() << "signal level for" << network.first.path() << network.second;
+            qCDebug(iwdLog) << "signal level for" << network.first.path() << network.second;
             emit signalLevelChanged(network.first.path(), network.second);
         }
     } else {
-        qWarning() << "Error calling get ordered networks" << reply.error().message();
+        qCWarning(iwdLog) << "Error calling get ordered networks" << reply.error().message();
     }
     watcher->deleteLater();
 }
@@ -299,12 +301,12 @@ void Iwd::onGetOrderedNetworksReply(QDBusPendingCallWatcher *watcher)
 void Iwd::onPropertiesChanged(QDBusAbstractInterface *intf, const QString &interfaceName, const QVariantMap &changedProperties, const QStringList &invalidatedProperties)
 {
     setProperties(intf, changedProperties);
-    qDebug() << "properties changed" << intf << interfaceName << changedProperties << invalidatedProperties;
+    qCDebug(iwdLog) << "properties changed" << intf << interfaceName << changedProperties << invalidatedProperties;
 
     if (interfaceName == iwd::Station::staticInterfaceName()) {
         iwd::Station *station = qobject_cast<iwd::Station*>(intf);
         if (!station) {
-            qWarning() << "Not station after all?";
+            qCWarning(iwdLog) << "Not station after all?";
             return;
         }
 
@@ -321,7 +323,7 @@ void Iwd::onPropertiesChanged(QDBusAbstractInterface *intf, const QString &inter
         }
         if (changedProperties.contains("ConnectedNetwork")) {
             const QString network = qvariant_cast<QDBusObjectPath>(changedProperties["ConnectedNetwork"]).path();
-            qDebug() << "Connected changed" << network;
+            qCDebug(iwdLog) << "Connected changed" << network;
             emit stationCurrentNetworkChanged(station->path(), network);
         }
 
@@ -331,7 +333,7 @@ void Iwd::onPropertiesChanged(QDBusAbstractInterface *intf, const QString &inter
         }
     } else if (interfaceName == iwd::Network::staticInterfaceName()) {
         if (changedProperties.contains("LastConnectedTime")) {
-            qDebug() << "Last connected changed";
+            qCDebug(iwdLog) << "Last connected changed";
         }
         if (changedProperties.contains("Connected")) {
             const bool connected = changedProperties["Connected"].toBool();
@@ -346,14 +348,14 @@ void Iwd::onPropertiesChanged(QDBusAbstractInterface *intf, const QString &inter
             emit knownNetworkEnabledChanged(intf->path(), changedProperties["AutoConnect"].toBool());
         }
     } else {
-        qWarning() << "Unhandled property change";
+        qCWarning(iwdLog) << "Unhandled property change";
     }
 }
 
 void Iwd::setProperties(QObject *object, const QVariantMap &properties)
 {
     if (!object) {
-        qWarning() << "No object" << properties;
+        qCWarning(iwdLog) << "No object" << properties;
         return;
     }
 
@@ -362,7 +364,7 @@ void Iwd::setProperties(QObject *object, const QVariantMap &properties)
         it.next();
         const char *propertyName = it.key().toLatin1().constData();
         if (object->metaObject()->indexOfProperty(propertyName) == -1) {
-            qWarning() << "Invalid property name" << it.key() << "for" << object;
+            qCWarning(iwdLog) << "Invalid property name" << it.key() << "for" << object;
             continue;
         }
         object->setProperty(propertyName, it.value());
@@ -375,7 +377,7 @@ SignalLevelAgent::SignalLevelAgent(Iwd *parent) :
     // Need a unique ID, best I could come up with
     m_path.setPath("/qiwd/signalagent/" + QString::number(std::uintptr_t(this)) + QString::number(QCoreApplication::applicationPid()));
 
-    qDebug() << "Signal agent path" << m_path.path();
+    qCDebug(iwdLog) << "Signal agent path" << m_path.path();
 }
 
 AuthAgent::AuthAgent(Iwd *parent) : QDBusAbstractAdaptor(parent),
@@ -384,5 +386,5 @@ AuthAgent::AuthAgent(Iwd *parent) : QDBusAbstractAdaptor(parent),
     // Need a unique ID, best I could come up with
     m_path.setPath("/qiwd/authagent/" + QString::number(std::uintptr_t(this)) + QString::number(QCoreApplication::applicationPid()));
 
-    qDebug() << "Auth Agent path" << m_path << m_path.path();
+    qCDebug(iwdLog) << "Auth Agent path" << m_path << m_path.path();
 }

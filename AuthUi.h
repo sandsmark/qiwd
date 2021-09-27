@@ -5,6 +5,8 @@
 #include <QWidget>
 #include "Iwd.h"
 
+Q_DECLARE_LOGGING_CATEGORY(authLog)
+
 class Window;
 
 class AuthUi : public AuthAgent

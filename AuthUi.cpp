@@ -6,18 +6,20 @@
 #include <QLineEdit>
 #include <QDialogButtonBox>
 
+Q_LOGGING_CATEGORY(authLog, "iwd.auth", QtInfoMsg)
+
 AuthUi::AuthUi(Iwd *iwd, QWidget *parentWindow) : AuthAgent(iwd),
     m_parentWindow(parentWindow)
 {
     connect(this, &AuthAgent::released, this, [this](){
-        qDebug() << this << "Released";
+        qCDebug(authLog) << this << "Released";
     });
     connect(this, &AuthAgent::released, this, &QObject::deleteLater);
 }
 
 QString AuthUi::onRequestPrivateKeyPassphrase(const QString &networkId)
 {
-    qDebug() << "Requesting private key passphrase for" << networkId;
+    qCDebug(authLog) << "Requesting private key passphrase for" << networkId;
 
     return QInputDialog::getText(m_parentWindow,
                                  tr("Private key passphrase"),
@@ -27,7 +29,7 @@ QString AuthUi::onRequestPrivateKeyPassphrase(const QString &networkId)
 
 QString AuthUi::onRequestPassphrase(const QString &networkId)
 {
-    qDebug() << "Requesting passphrase for" << networkId;
+    qCDebug(authLog) << "Requesting passphrase for" << networkId;
 
     return QInputDialog::getText(m_parentWindow,
                                  tr("Network passphrase"),
@@ -37,7 +39,7 @@ QString AuthUi::onRequestPassphrase(const QString &networkId)
 
 QPair<QString, QString> AuthUi::onRequestUsernameAndPassword(const QString &networkId)
 {
-    qDebug() << "Requesting username and password for" << networkId;
+    qCDebug(authLog) << "Requesting username and password for" << networkId;
 
     QPointer<QDialog> dialog = new QDialog(m_parentWindow);
     dialog->setWindowTitle(tr("Username and password"));
@@ -67,7 +69,7 @@ QPair<QString, QString> AuthUi::onRequestUsernameAndPassword(const QString &netw
     // Because we can't user open(), the dialog might get deleted for us if the application quits while it is open
     int result = dialog->exec();
     if (!dialog || !usernameEdit || !passwordEdit) {
-        qWarning() << "Dialog or widgets deleted while executing, app might be terminated";
+        qCWarning(authLog) << "Dialog or widgets deleted while executing, app might be terminated";
         return {};
     }
 
@@ -84,7 +86,7 @@ QPair<QString, QString> AuthUi::onRequestUsernameAndPassword(const QString &netw
 
 QString AuthUi::onRequestUserPassword(const QString &username, const QString &networkId)
 {
-    qDebug() << "Requesting user password for" << username << "for" << networkId;
+    qCDebug(authLog) << "Requesting user password for" << username << "for" << networkId;
     return QInputDialog::getText(m_parentWindow,
                                  tr("Password for username"),
                                  tr("Please enter password for user %1 for '%2'").arg(username, m_iwd->networkName(networkId)),
